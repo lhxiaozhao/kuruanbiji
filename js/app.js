@@ -5,7 +5,7 @@ class NotesApp {
         this.filter = 'all';
         this.searchQuery = '';
         this.autoSaveTimer = null;
-        this.theme = localStorage.getItem('theme') || 'dark';
+        this.theme = localStorage.getItem('theme') || 'light';
         this.init();
     }
 
@@ -67,6 +67,7 @@ class NotesApp {
         document.getElementById('deleteNote').addEventListener('click', () => this.deleteNote());
         document.getElementById('exportNote').addEventListener('click', () => this.exportNote());
         document.getElementById('importNote').addEventListener('click', () => this.importNote());
+        document.getElementById('saveNote').addEventListener('click', () => this.saveCurrentNote());
 
         // 键盘快捷键
         document.addEventListener('keydown', (e) => {
@@ -81,6 +82,13 @@ class NotesApp {
                     e.preventDefault();
                     document.getElementById('searchInput').focus();
                 }
+            }
+        });
+
+        // 页面卸载前保存
+        window.addEventListener('beforeunload', () => {
+            if (this.currentNote) {
+                this.saveCurrentNote();
             }
         });
     }
@@ -222,7 +230,7 @@ function hello() {
 
     autoSave() {
         if (this.autoSaveTimer) clearTimeout(this.autoSaveTimer);
-        this.autoSaveTimer = setTimeout(() => this.saveCurrentNote(), 1000);
+        this.autoSaveTimer = setTimeout(() => this.saveCurrentNote(), 500);
     }
 
     async saveCurrentNote() {
