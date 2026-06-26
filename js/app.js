@@ -13,8 +13,8 @@ class NotesApp {
         await storage.init();
         this.applyTheme();
         this.bindEvents();
-        this.renderNoteList();
-        this.createWelcomeNote();
+        await this.renderNoteList();
+        await this.createWelcomeNote();
     }
 
     applyTheme() {
@@ -95,16 +95,26 @@ class NotesApp {
             }
         });
 
-        // 页面卸载前保存
+        // 页面卸载前保存（同步保存）
         window.addEventListener('beforeunload', () => {
             if (this.currentNote) {
-                this.saveCurrentNote();
+                // 同步保存到 localStorage 作为备份
+                const note = {
+                    id: this.currentNote.id,
+                    title: document.getElementById('noteTitle').value,
+                    content: document.getElementById('noteContent').value,
+                    starred: this.currentNote.starred,
+                    deleted: this.currentNote.deleted,
+                    createdAt: this.currentNote.createdAt,
+                    updatedAt: new Date().toISOString()
+                };
+                localStorage.setItem('lastNote', JSON.stringify(note));
             }
         });
     }
 
-    createWelcomeNote() {
-        const notes = storage.getActive();
+    async createWelcomeNote() {
+        const notes = await storage.getActive();
         if (notes.length === 0) {
             const welcomeNote = {
                 id: this.generateId(),
@@ -197,7 +207,8 @@ function hello() {
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString()
             };
-            storage.add(welcomeNote);
+            await storage.add(welcomeNote);
+            await this.renderNoteList();
         }
     }
 
@@ -223,7 +234,7 @@ function hello() {
         await storage.add(note);
         this.currentNote = note;
         this.renderEditor();
-        this.renderNoteList();
+        await this.renderNoteList();
         document.getElementById('noteTitle').focus();
     }
 
@@ -237,7 +248,7 @@ function hello() {
         if (note) {
             this.currentNote = note;
             this.renderEditor();
-            this.renderNoteList();
+            await this.renderNoteList();
         }
     }
 
@@ -263,7 +274,7 @@ function hello() {
         this.currentNote.updatedAt = new Date().toISOString();
         await storage.update(this.currentNote);
         this.updateLastSaved();
-        this.renderNoteList();
+        await this.renderNoteList();
     }
 
     updateLastSaved() {
@@ -388,7 +399,7 @@ function hello() {
         this.currentNote.starred = !this.currentNote.starred;
         await storage.update(this.currentNote);
         this.renderEditor();
-        this.renderNoteList();
+        await this.renderNoteList();
     }
 
     async deleteNote() {
@@ -406,7 +417,7 @@ function hello() {
         }
         this.currentNote = null;
         this.renderEditor();
-        this.renderNoteList();
+        await this.renderNoteList();
     }
 
     exportNote() {
@@ -440,7 +451,7 @@ function hello() {
             await storage.add(note);
             this.currentNote = note;
             this.renderEditor();
-            this.renderNoteList();
+            await this.renderNoteList();
         };
         input.click();
     }

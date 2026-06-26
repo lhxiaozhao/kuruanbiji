@@ -30,7 +30,7 @@ class NoteStorage {
 
     async add(note) {
         return this._transaction('notes', 'readwrite', store => {
-            store.add(note);
+            return store.add(note);
         });
     }
 
@@ -42,13 +42,13 @@ class NoteStorage {
 
     async update(note) {
         return this._transaction('notes', 'readwrite', store => {
-            store.put(note);
+            return store.put(note);
         });
     }
 
     async delete(id) {
         return this._transaction('notes', 'readwrite', store => {
-            store.delete(id);
+            return store.delete(id);
         });
     }
 
@@ -61,33 +61,21 @@ class NoteStorage {
     async getActive() {
         return this._transaction('notes', 'readonly', store => {
             const index = store.index('deleted');
-            const request = index.getAll(IDBKeyRange.only(false));
-            return new Promise((resolve, reject) => {
-                request.onsuccess = () => resolve(request.result);
-                request.onerror = () => reject(request.error);
-            });
+            return index.getAll(IDBKeyRange.only(false));
         });
     }
 
     async getStarred() {
         return this._transaction('notes', 'readonly', store => {
             const index = store.index('starred');
-            const request = index.getAll(IDBKeyRange.only(true));
-            return new Promise((resolve, reject) => {
-                request.onsuccess = () => resolve(request.result);
-                request.onerror = () => reject(request.error);
-            });
+            return index.getAll(IDBKeyRange.only(true));
         });
     }
 
     async getDeleted() {
         return this._transaction('notes', 'readonly', store => {
             const index = store.index('deleted');
-            const request = index.getAll(IDBKeyRange.only(true));
-            return new Promise((resolve, reject) => {
-                request.onsuccess = () => resolve(request.result);
-                request.onerror = () => reject(request.error);
-            });
+            return index.getAll(IDBKeyRange.only(true));
         });
     }
 
@@ -128,13 +116,9 @@ class NoteStorage {
             const store = transaction.objectStore(storeName);
             const request = callback(store);
             
-            if (request && request.result !== undefined) {
-                request.onsuccess = () => resolve(request.result);
-                request.onerror = () => reject(request.error);
-            } else {
-                transaction.oncomplete = () => resolve();
-                transaction.onerror = () => reject(transaction.error);
-            }
+            // 正确处理 IndexedDB request 的异步结果
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
         });
     }
 }
