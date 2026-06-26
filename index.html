@@ -58,9 +58,14 @@
         .toolbar-btn:hover { background: #4a6cf7; color: white; border-color: #4a6cf7; }
         .toolbar-divider { width: 1px; background: #dee2e6; margin: 0 4px; flex-shrink: 0; }
 
-        .editor-body { flex: 1; position: relative; overflow: hidden; }
+        .editor-body { flex: 1; position: relative; overflow: hidden; display: flex; }
+        .editor-body.split { display: grid; grid-template-columns: 1fr 1fr; }
+        .editor-body.split #noteContent { border-right: 1px solid #dee2e6; }
+        [data-theme="dark"] .editor-body.split #noteContent { border-color: #2d3748; }
         #noteContent { width: 100%; height: 100%; padding: 24px; border: none; background: #fff; font-size: 15px; line-height: 1.7; resize: none; outline: none; font-family: 'SF Mono', 'Monaco', monospace; }
         #preview { width: 100%; height: 100%; padding: 24px; overflow-y: auto; background: #fff; line-height: 1.7; }
+        .editor-body.split #preview { background: #f8f9fa; }
+        [data-theme="dark"] .editor-body.split #preview { background: #16213e; }
         #preview h1, #preview h2, #preview h3 { margin: 20px 0 10px; }
         #preview p { margin: 10px 0; }
         #preview code { background: #f0f0f0; padding: 2px 6px; border-radius: 4px; font-size: 13px; font-family: 'SF Mono', 'Monaco', monospace; }
@@ -84,8 +89,10 @@
         #installBtn:hover { background: #4a6cf7; color: white; border-color: #4a6cf7; }
 
         /* 主题切换 */
-        .theme-toggle { position: fixed; top: 16px; right: 16px; width: 36px; height: 36px; border: none; border-radius: 50%; background: #f8f9fa; cursor: pointer; font-size: 16px; z-index: 100; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .theme-toggle:hover { background: #4a6cf7; color: white; }
+        .theme-toggle { width: 32px; height: 32px; border: none; border-radius: 6px; background: transparent; cursor: pointer; font-size: 14px; color: #6c757d; flex-shrink: 0; transition: all 0.2s; }
+        .theme-toggle:hover { background: #e9ecef; color: #333; }
+        [data-theme="dark"] .theme-toggle { color: #adb5bd; }
+        [data-theme="dark"] .theme-toggle:hover { background: #0f3460; color: #e9ecef; }
 
         /* 暗色主题 */
         [data-theme="dark"] { background: #1a1a2e; color: #e9ecef; }
@@ -125,17 +132,17 @@
         @media (max-width: 768px) {
             .sidebar { width: 100%; position: absolute; z-index: 10; transform: translateX(-100%); transition: transform 0.3s; }
             .sidebar.open { transform: translateX(0); }
+            .editor-body.split { display: grid; grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
     <div class="app">
-        <button class="theme-toggle" id="themeToggle">☀️</button>
-
         <aside class="sidebar">
             <div class="sidebar-header">
                 <h1>📝 酷软笔记</h1>
                 <div style="display:flex;gap:6px;flex-shrink:0">
+                    <button id="themeToggle" class="theme-toggle" title="切换主题">☀️</button>
                     <button id="importNote" title="导入">📥</button>
                     <button id="newNote">+</button>
                 </div>
@@ -190,7 +197,7 @@
                 <button class="toolbar-btn" onclick="insertMarkdown('table')" title="表格">▦</button>
                 <button class="toolbar-btn" onclick="insertMarkdown('hr')" title="分割线">—</button>
                 <span class="toolbar-divider"></span>
-                <button class="toolbar-btn" onclick="togglePreview()" title="预览">👁️</button>
+                <button class="toolbar-btn" onclick="togglePreview()" id="previewToggle" title="分屏预览">👁️</button>
             </div>
 
             <div class="editor-body">
@@ -388,7 +395,11 @@
         // ============ 保存 ============
         function autoSave() {
             if (autoSaveTimer) clearTimeout(autoSaveTimer);
-            autoSaveTimer = setTimeout(saveCurrentNote, 500);
+            autoSaveTimer = setTimeout(function() {
+                saveCurrentNote();
+                // 分屏模式下实时更新预览
+                if (viewMode === 'split') updatePreview();
+            }, 500);
         }
 
         function saveCurrentNote() {
@@ -571,17 +582,41 @@
         }
 
         // ============ Markdown 预览 ============
+        var viewMode = 'edit'; // 'edit' | 'split' | 'preview'
+
         function togglePreview() {
             var content = document.getElementById('noteContent');
             var preview = document.getElementById('preview');
-            if (preview.classList.contains('hidden')) {
-                preview.innerHTML = currentNote ? ('<h1>' + escapeHtml(currentNote.title) + '</h1>' + parseMarkdown(currentNote.content)) : '';
+            var editorBody = document.querySelector('.editor-body');
+            var btn = document.getElementById('previewToggle');
+
+            if (viewMode === 'edit') {
+                viewMode = 'split';
+                editorBody.classList.add('split');
+                preview.classList.remove('hidden');
+                updatePreview();
+                btn.textContent = '📝';
+            } else if (viewMode === 'split') {
+                viewMode = 'preview';
+                editorBody.classList.remove('split');
                 preview.classList.remove('hidden');
                 content.classList.add('hidden');
+                updatePreview();
+                btn.textContent = '✏️';
             } else {
+                viewMode = 'edit';
+                editorBody.classList.remove('split');
                 preview.classList.add('hidden');
                 content.classList.remove('hidden');
                 content.focus();
+                btn.textContent = '👁️';
+            }
+        }
+
+        function updatePreview() {
+            var preview = document.getElementById('preview');
+            if (currentNote) {
+                preview.innerHTML = '<h1>' + escapeHtml(currentNote.title) + '</h1>' + parseMarkdown(currentNote.content);
             }
         }
 
