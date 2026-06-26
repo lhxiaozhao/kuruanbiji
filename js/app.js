@@ -62,12 +62,19 @@ class NotesApp {
         });
 
         // 操作按钮
+        document.getElementById('saveNote').addEventListener('click', () => this.saveCurrentNote());
         document.getElementById('togglePreview').addEventListener('click', () => this.togglePreview());
         document.getElementById('toggleStar').addEventListener('click', () => this.toggleStar());
         document.getElementById('deleteNote').addEventListener('click', () => this.deleteNote());
         document.getElementById('exportNote').addEventListener('click', () => this.exportNote());
         document.getElementById('importNote').addEventListener('click', () => this.importNote());
-        document.getElementById('saveNote').addEventListener('click', () => this.saveCurrentNote());
+        document.getElementById('printNote').addEventListener('click', () => this.printNote());
+        document.getElementById('shareNote').addEventListener('click', () => this.shareNote());
+
+        // 工具栏事件
+        document.querySelectorAll('.toolbar-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => this.insertMarkdown(e.target.dataset.command));
+        });
 
         // 键盘快捷键
         document.addEventListener('keydown', (e) => {
@@ -81,6 +88,9 @@ class NotesApp {
                 } else if (e.key === 'f') {
                     e.preventDefault();
                     document.getElementById('searchInput').focus();
+                } else if (e.key === 'p') {
+                    e.preventDefault();
+                    this.printNote();
                 }
             }
         });
@@ -115,6 +125,8 @@ class NotesApp {
 - ✅ **导入功能**：支持导入 Markdown 文件
 - ✅ **回收站**：误删笔记可恢复
 - ✅ **暗色/亮色主题**：一键切换
+- ✅ **打印功能**：支持打印笔记
+- ✅ **分享功能**：复制笔记链接
 
 ## 快捷键
 
@@ -123,6 +135,7 @@ class NotesApp {
 | Ctrl + S | 保存笔记 |
 | Ctrl + N | 新建笔记 |
 | Ctrl + F | 搜索笔记 |
+| Ctrl + P | 打印笔记 |
 
 ## Markdown 语法示例
 
@@ -192,7 +205,12 @@ function hello() {
         return Date.now().toString(36) + Math.random().toString(36).substr(2);
     }
 
-    createNewNote() {
+    async createNewNote() {
+        // 先保存当前笔记
+        if (this.currentNote) {
+            await this.saveCurrentNote();
+        }
+        
         const note = {
             id: this.generateId(),
             title: '',
@@ -202,7 +220,7 @@ function hello() {
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
         };
-        storage.add(note);
+        await storage.add(note);
         this.currentNote = note;
         this.renderEditor();
         this.renderNoteList();
@@ -210,6 +228,11 @@ function hello() {
     }
 
     async loadNote(id) {
+        // 先保存当前笔记
+        if (this.currentNote) {
+            await this.saveCurrentNote();
+        }
+        
         const note = await storage.get(id);
         if (note) {
             this.currentNote = note;
@@ -263,6 +286,88 @@ function hello() {
         tagsEl.innerHTML = this.currentNote.tags.map(tag => 
             `<span class="tag">${tag}</span>`
         ).join('');
+    }
+
+    insertMarkdown(command) {
+        const textarea = document.getElementById('noteContent');
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const text = textarea.value;
+        const selectedText = text.substring(start, end);
+        let insertion = '';
+        let cursorOffset = 0;
+
+        switch(command) {
+            case 'bold':
+                insertion = `**${selectedText || '粗体'}**`;
+                cursorOffset = selectedText ? 0 : -2;
+                break;
+            case 'italic':
+                insertion = `*${selectedText || '斜体'}*`;
+                cursorOffset = selectedText ? 0 : -1;
+                break;
+            case 'underline':
+                insertion = `<u>${selectedText || '下划线'}</u>`;
+                cursorOffset = selectedText ? 0 : -4;
+                break;
+            case 'strikethrough':
+                insertion = `~~${selectedText || '删除线'}~~`;
+                cursorOffset = selectedText ? 0 : -2;
+                break;
+            case 'h1':
+                insertion = `\n# ${selectedText || '标题1'}`;
+                cursorOffset = selectedText ? 0 : -2;
+                break;
+            case 'h2':
+                insertion = `\n## ${selectedText || '标题2'}`;
+                cursorOffset = selectedText ? 0 : -2;
+                break;
+            case 'h3':
+                insertion = `\n### ${selectedText || '标题3'}`;
+                cursorOffset = selectedText ? 0 : -2;
+                break;
+            case 'ul':
+                insertion = `\n- ${selectedText || '列表项'}`;
+                cursorOffset = selectedText ? 0 : -2;
+                break;
+            case 'ol':
+                insertion = `\n1. ${selectedText || '列表项'}`;
+                cursorOffset = selectedText ? 0 : -2;
+                break;
+            case 'check':
+                insertion = `\n- [ ] ${selectedText || '待办事项'}`;
+                cursorOffset = selectedText ? 0 : -2;
+                break;
+            case 'code':
+                insertion = `\n\`\`\`\n${selectedText || '代码'}\n\`\`\`\n`;
+                cursorOffset = selectedText ? 0 : -6;
+                break;
+            case 'quote':
+                insertion = `\n> ${selectedText || '引用'}`;
+                cursorOffset = selectedText ? 0 : -2;
+                break;
+            case 'link':
+                insertion = `[${selectedText || '链接文本'}](url)`;
+                cursorOffset = selectedText ? 0 : -5;
+                break;
+            case 'image':
+                insertion = `![${selectedText || '图片描述'}](url)`;
+                cursorOffset = selectedText ? 0 : -5;
+                break;
+            case 'table':
+                insertion = `\n| 列1 | 列2 | 列3 |\n|-----|-----|-----|\n| 内容 | 内容 | 内容 |\n`;
+                cursorOffset = -2;
+                break;
+            case 'hr':
+                insertion = `\n---\n`;
+                cursorOffset = -2;
+                break;
+        }
+
+        textarea.value = text.substring(0, start) + insertion + text.substring(end);
+        textarea.focus();
+        textarea.selectionStart = textarea.selectionEnd = start + insertion.length + cursorOffset;
+        this.autoSave();
     }
 
     togglePreview() {
@@ -338,6 +443,31 @@ function hello() {
             this.renderNoteList();
         };
         input.click();
+    }
+
+    printNote() {
+        if (!this.currentNote) return;
+        // 先显示预览
+        const preview = document.getElementById('preview');
+        const content = document.getElementById('noteContent');
+        if (preview.classList.contains('hidden')) {
+            preview.innerHTML = markdown.parse(content.value);
+            preview.classList.remove('hidden');
+            content.classList.add('hidden');
+        }
+        // 打印
+        window.print();
+    }
+
+    shareNote() {
+        if (!this.currentNote) return;
+        // 复制笔记内容到剪贴板
+        const text = `# ${this.currentNote.title}\n\n${this.currentNote.content}`;
+        navigator.clipboard.writeText(text).then(() => {
+            alert('笔记内容已复制到剪贴板！');
+        }).catch(() => {
+            alert('复制失败，请手动复制');
+        });
     }
 
     async renderNoteList() {

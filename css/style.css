@@ -240,6 +240,41 @@ body {
     color: var(--text-muted);
 }
 
+/* 编辑工具栏 */
+.editor-toolbar {
+    padding: 10px 32px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    background: var(--bg-secondary);
+    transition: background 0.2s, border-color 0.2s;
+}
+
+.toolbar-btn {
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--bg-primary);
+    color: var(--text-secondary);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 28px;
+}
+
+.toolbar-btn:hover {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+}
+
+.toolbar-divider {
+    width: 1px;
+    background: var(--border);
+    margin: 0 4px;
+}
+
 /* 编辑器 */
 .editor {
     flex: 1;
@@ -450,6 +485,26 @@ body {
 .task-list-item input[type="checkbox"] {
     margin-right: 10px;
     cursor: default;
+}
+
+/* 打印样式 */
+@media print {
+    body {
+        background: white;
+        color: black;
+    }
+    .sidebar, .theme-toggle, .editor-header, .editor-toolbar, .editor-footer {
+        display: none;
+    }
+    .editor {
+        width: 100%;
+    }
+    .preview {
+        display: block !important;
+    }
+    #noteContent {
+        display: none;
+    }
 }
 
 /* 脚注 */
