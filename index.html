@@ -15,13 +15,22 @@
         .sidebar-header h1 { font-size: 16px; font-weight: 600; }
         #newNote { width: 32px; height: 32px; border: none; border-radius: 6px; background: #4a6cf7; color: white; font-size: 18px; cursor: pointer; }
         #newNote:hover { background: #3a56d4; }
+        
         .search-box { padding: 12px 16px; border-bottom: 1px solid #dee2e6; }
         #searchInput { width: 100%; padding: 8px 12px; border: 1px solid #dee2e6; border-radius: 6px; font-size: 14px; outline: none; }
         #searchInput:focus { border-color: #4a6cf7; }
+        
+        .filter-tabs { display: flex; padding: 8px 16px; gap: 6px; border-bottom: 1px solid #dee2e6; }
+        .tab { padding: 4px 10px; border: none; border-radius: 4px; background: transparent; color: #6c757d; cursor: pointer; font-size: 12px; }
+        .tab.active { background: #4a6cf7; color: white; }
+        .tab:hover:not(.active) { background: #e9ecef; }
+        
         .note-list { flex: 1; overflow-y: auto; padding: 8px; }
-        .note-item { padding: 12px; margin-bottom: 4px; border-radius: 6px; cursor: pointer; transition: background 0.2s; }
+        .note-item { padding: 12px; margin-bottom: 4px; border-radius: 6px; cursor: pointer; transition: background 0.15s; }
         .note-item:hover { background: #e9ecef; }
         .note-item.active { background: #4a6cf7; color: white; }
+        .note-item.active .note-preview,
+        .note-item.active .note-date { color: rgba(255,255,255,0.8); }
         .note-title { font-size: 14px; font-weight: 500; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .note-preview { font-size: 12px; color: #6c757d; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px; }
         .note-date { font-size: 11px; color: #adb5bd; }
@@ -31,15 +40,33 @@
         .editor-header { padding: 12px 24px; border-bottom: 1px solid #dee2e6; display: flex; justify-content: space-between; align-items: center; }
         #noteTitle { flex: 1; padding: 8px 12px; border: 1px solid #dee2e6; border-radius: 6px; font-size: 16px; font-weight: 500; outline: none; margin-right: 12px; }
         #noteTitle:focus { border-color: #4a6cf7; }
-        .editor-actions { display: flex; gap: 6px; }
+        .editor-actions { display: flex; gap: 4px; }
         .editor-actions button { width: 32px; height: 32px; border: 1px solid #dee2e6; border-radius: 6px; background: #f8f9fa; cursor: pointer; font-size: 14px; }
         .editor-actions button:hover { background: #4a6cf7; color: white; border-color: #4a6cf7; }
-        .editor-body { flex: 1; position: relative; }
+        
+        /* 编辑器工具栏 */
+        .editor-toolbar { padding: 8px 24px; border-bottom: 1px solid #dee2e6; display: flex; gap: 4px; flex-wrap: wrap; background: #f8f9fa; }
+        .toolbar-btn { padding: 4px 8px; border: 1px solid #dee2e6; border-radius: 4px; background: #fff; cursor: pointer; font-size: 12px; color: #6c757d; }
+        .toolbar-btn:hover { background: #4a6cf7; color: white; border-color: #4a6cf7; }
+        .toolbar-divider { width: 1px; background: #dee2e6; margin: 0 4px; }
+        
+        .editor-body { flex: 1; position: relative; overflow: hidden; }
         #noteContent { width: 100%; height: 100%; padding: 24px; border: none; background: #fff; font-size: 15px; line-height: 1.7; resize: none; outline: none; font-family: 'SF Mono', 'Monaco', monospace; }
+        #preview { width: 100%; height: 100%; padding: 24px; overflow-y: auto; background: #fff; line-height: 1.7; }
+        #preview h1, #preview h2, #preview h3 { margin: 20px 0 10px; }
+        #preview p { margin: 10px 0; }
+        #preview code { background: #f8f9fa; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+        #preview pre { background: #f8f9fa; padding: 16px; border-radius: 6px; overflow-x: auto; }
+        #preview blockquote { border-left: 3px solid #4a6cf7; padding-left: 16px; color: #6c757d; margin: 10px 0; }
+        #preview table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+        #preview th, #preview td { border: 1px solid #dee2e6; padding: 8px 12px; text-align: left; }
+        #preview th { background: #f8f9fa; }
+        .hidden { display: none; }
+        
         .editor-footer { padding: 8px 24px; border-top: 1px solid #dee2e6; display: flex; justify-content: space-between; color: #adb5bd; font-size: 12px; }
         
         /* 主题切换 */
-        .theme-toggle { position: fixed; top: 16px; right: 16px; width: 36px; height: 36px; border: none; border-radius: 50%; background: #f8f9fa; cursor: pointer; font-size: 16px; z-index: 100; }
+        .theme-toggle { position: fixed; top: 16px; right: 16px; width: 36px; height: 36px; border: none; border-radius: 50%; background: #f8f9fa; cursor: pointer; font-size: 16px; z-index: 100; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         .theme-toggle:hover { background: #4a6cf7; color: white; }
         
         /* 暗色主题 */
@@ -48,16 +75,35 @@
         [data-theme="dark"] .sidebar-header { border-color: #2d3748; }
         [data-theme="dark"] .search-box { border-color: #2d3748; }
         [data-theme="dark"] #searchInput { background: #1a1a2e; color: #e9ecef; border-color: #2d3748; }
+        [data-theme="dark"] .filter-tabs { border-color: #2d3748; }
+        [data-theme="dark"] .tab:hover:not(.active) { background: #0f3460; color: #e9ecef; }
         [data-theme="dark"] .note-item:hover { background: #0f3460; }
         [data-theme="dark"] .note-preview { color: #adb5bd; }
         [data-theme="dark"] .note-date { color: #6c757d; }
         [data-theme="dark"] .editor { background: #1a1a2e; }
         [data-theme="dark"] .editor-header { border-color: #2d3748; }
+        [data-theme="dark"] .editor-toolbar { background: #16213e; border-color: #2d3748; }
+        [data-theme="dark"] .toolbar-btn { background: #1a1a2e; color: #adb5bd; border-color: #2d3748; }
+        [data-theme="dark"] .toolbar-btn:hover { background: #4a6cf7; color: white; border-color: #4a6cf7; }
+        [data-theme="dark"] .toolbar-divider { background: #2d3748; }
         [data-theme="dark"] #noteTitle { background: #16213e; color: #e9ecef; border-color: #2d3748; }
         [data-theme="dark"] .editor-actions button { background: #16213e; color: #e9ecef; border-color: #2d3748; }
         [data-theme="dark"] #noteContent { background: #1a1a2e; color: #e9ecef; }
+        [data-theme="dark"] #preview { background: #1a1a2e; color: #e9ecef; }
+        [data-theme="dark"] #preview code { background: #16213e; }
+        [data-theme="dark"] #preview pre { background: #16213e; }
+        [data-theme="dark"] #preview blockquote { color: #adb5bd; }
+        [data-theme="dark"] #preview th, [data-theme="dark"] #preview td { border-color: #2d3748; }
+        [data-theme="dark"] #preview th { background: #16213e; }
         [data-theme="dark"] .editor-footer { border-color: #2d3748; color: #6c757d; }
         [data-theme="dark"] .theme-toggle { background: #16213e; color: #e9ecef; }
+
+        /* 响应式 */
+        @media (max-width: 768px) {
+            .sidebar { width: 100%; position: absolute; z-index: 10; transform: translateX(-100%); transition: transform 0.3s; }
+            .sidebar.open { transform: translateX(0); }
+            .editor { width: 100%; }
+        }
     </style>
 </head>
 <body>
@@ -67,10 +113,18 @@
         <aside class="sidebar">
             <div class="sidebar-header">
                 <h1>📝 酷软笔记</h1>
-                <button id="newNote">+</button>
+                <div style="display:flex;gap:6px">
+                    <button id="importNote" title="导入">📥</button>
+                    <button id="newNote">+</button>
+                </div>
             </div>
             <div class="search-box">
                 <input type="text" id="searchInput" placeholder="搜索笔记...">
+            </div>
+            <div class="filter-tabs">
+                <button class="tab active" onclick="switchFilter('all', this)">全部</button>
+                <button class="tab" onclick="switchFilter('starred', this)">⭐ 收藏</button>
+                <button class="tab" onclick="switchFilter('trash', this)">🗑️ 回收站</button>
             </div>
             <div id="noteList" class="note-list"></div>
         </aside>
@@ -79,13 +133,37 @@
             <div class="editor-header">
                 <input type="text" id="noteTitle" placeholder="笔记标题">
                 <div class="editor-actions">
-                    <button id="saveNote" title="保存">💾</button>
+                    <button id="saveNote" title="保存(Ctrl+S)">💾</button>
+                    <button id="printNote" title="打印">🖨️</button>
+                    <button id="toggleStar" title="收藏">☆</button>
                     <button id="deleteNote" title="删除">🗑️</button>
                     <button id="exportNote" title="导出">📤</button>
                 </div>
             </div>
+            
+            <div class="editor-toolbar">
+                <button class="toolbar-btn" onclick="insertMarkdown('bold')" title="粗体"><b>B</b></button>
+                <button class="toolbar-btn" onclick="insertMarkdown('italic')" title="斜体"><i>I</i></button>
+                <button class="toolbar-btn" onclick="insertMarkdown('h1')" title="标题1">H1</button>
+                <button class="toolbar-btn" onclick="insertMarkdown('h2')" title="标题2">H2</button>
+                <button class="toolbar-btn" onclick="insertMarkdown('h3')" title="标题3">H3</button>
+                <span class="toolbar-divider"></span>
+                <button class="toolbar-btn" onclick="insertMarkdown('ul')" title="无序列表">•</button>
+                <button class="toolbar-btn" onclick="insertMarkdown('ol')" title="有序列表">1.</button>
+                <button class="toolbar-btn" onclick="insertMarkdown('check')" title="任务列表">☑</button>
+                <span class="toolbar-divider"></span>
+                <button class="toolbar-btn" onclick="insertMarkdown('code')" title="代码块">{ }</button>
+                <button class="toolbar-btn" onclick="insertMarkdown('quote')" title="引用">"</button>
+                <button class="toolbar-btn" onclick="insertMarkdown('link')" title="链接">🔗</button>
+                <button class="toolbar-btn" onclick="insertMarkdown('table')" title="表格">▦</button>
+                <button class="toolbar-btn" onclick="insertMarkdown('hr')" title="分割线">—</button>
+                <span class="toolbar-divider"></span>
+                <button class="toolbar-btn" onclick="togglePreview()" title="预览">👁️</button>
+            </div>
+            
             <div class="editor-body">
                 <textarea id="noteContent" placeholder="开始写作..."></textarea>
+                <div id="preview" class="hidden"></div>
             </div>
             <div class="editor-footer">
                 <span id="lastSaved">未保存</span>
@@ -102,82 +180,57 @@
             try {
                 const data = localStorage.getItem(STORAGE_KEY);
                 return data ? JSON.parse(data) : [];
-            } catch (e) {
-                console.error('getNotes error:', e);
-                return [];
-            }
+            } catch (e) { return []; }
         }
         
         function saveNotes(notes) {
-            try {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
-            } catch (e) {
-                console.error('saveNotes error:', e);
-            }
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(notes)); } catch (e) {}
         }
         
         // ============ 应用状态 ============
         let currentNote = null;
         let autoSaveTimer = null;
+        let currentFilter = 'all';
         
         // ============ 初始化 ============
         function init() {
-            console.log('=== init ===');
+            // 加载主题
+            const theme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', theme);
+            document.getElementById('themeToggle').textContent = theme === 'dark' ? '🌙' : '☀️';
+            
             bindEvents();
             renderNoteList();
             createWelcomeNote();
-            console.log('=== init done ===');
         }
         
         // ============ 事件绑定 ============
         function bindEvents() {
-            console.log('=== bindEvents ===');
-            
-            // 主题切换
             document.getElementById('themeToggle').addEventListener('click', toggleTheme);
-            
-            // 新建笔记
             document.getElementById('newNote').addEventListener('click', createNewNote);
-            
-            // 搜索
-            document.getElementById('searchInput').addEventListener('input', function(e) {
-                renderNoteList(e.target.value);
-            });
-            
-            // 编辑器事件
+            document.getElementById('importNote').addEventListener('click', importNote);
+            document.getElementById('searchInput').addEventListener('input', function() { renderNoteList(); });
             document.getElementById('noteTitle').addEventListener('input', autoSave);
-            document.getElementById('noteContent').addEventListener('input', function() {
-                autoSave();
-                updateWordCount();
-            });
-            
-            // 操作按钮
+            document.getElementById('noteContent').addEventListener('input', function() { autoSave(); updateWordCount(); });
             document.getElementById('saveNote').addEventListener('click', saveCurrentNote);
+            document.getElementById('toggleStar').addEventListener('click', toggleStar);
             document.getElementById('deleteNote').addEventListener('click', deleteNote);
             document.getElementById('exportNote').addEventListener('click', exportNote);
+            document.getElementById('printNote').addEventListener('click', printNote);
             
             // 快捷键
             document.addEventListener('keydown', function(e) {
                 if (e.ctrlKey || e.metaKey) {
-                    if (e.key === 's') {
-                        e.preventDefault();
-                        saveCurrentNote();
-                    } else if (e.key === 'n') {
-                        e.preventDefault();
-                        createNewNote();
-                    }
+                    if (e.key === 's') { e.preventDefault(); saveCurrentNote(); }
+                    else if (e.key === 'n') { e.preventDefault(); createNewNote(); }
+                    else if (e.key === 'p') { e.preventDefault(); printNote(); }
                 }
             });
             
-            // 页面卸载前保存
-            window.addEventListener('beforeunload', function() {
-                if (currentNote) {
-                    saveCurrentNote();
-                }
-            });
+            window.addEventListener('beforeunload', function() { if (currentNote) saveCurrentNote(); });
         }
         
-        // ============ 主题切换 ============
+        // ============ 主题 ============
         function toggleTheme() {
             const current = document.documentElement.getAttribute('data-theme');
             const next = current === 'dark' ? 'light' : 'dark';
@@ -186,12 +239,13 @@
             document.getElementById('themeToggle').textContent = next === 'dark' ? '🌙' : '☀️';
         }
         
-        // 加载主题
-        (function() {
-            const theme = localStorage.getItem('theme') || 'light';
-            document.documentElement.setAttribute('data-theme', theme);
-            document.getElementById('themeToggle').textContent = theme === 'dark' ? '🌙' : '☀️';
-        })();
+        // ============ 筛选 ============
+        function switchFilter(filter, el) {
+            currentFilter = filter;
+            document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+            el.classList.add('active');
+            renderNoteList();
+        }
         
         // ============ 笔记操作 ============
         function generateId() {
@@ -202,178 +256,296 @@
             const notes = getNotes();
             if (notes.length === 0) {
                 const welcomeNote = {
-                    id: generateId(),
-                    title: '👋 欢迎使用酷软笔记',
-                    content: '# 欢迎使用酷软笔记\n\n这是一个纯前端的笔记应用，数据保存在本地。\n\n## 功能\n- ✅ Markdown 编辑\n- ✅ 实时保存\n- ✅ 本地存储\n- ✅ 搜索功能\n- ✅ 导出功能\n\n## 快捷键\n| 快捷键 | 功能 |\n|--------|------|\n| Ctrl + S | 保存 |\n| Ctrl + N | 新建 |\n\n开始写作吧！📝',
-                    starred: false,
-                    deleted: false,
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString()
+                    id: generateId(), title: '👋 欢迎使用酷软笔记',
+                    content: '# 欢迎使用酷软笔记\n\n纯前端笔记应用，数据保存在本地。\n\n## 功能\n- ✅ Markdown 编辑\n- ✅ 自动保存\n- ✅ 本地存储\n- ✅ 搜索/收藏/回收站\n- ✅ 打印/导出/分享\n- ✅ 编辑工具栏\n- ✅ 暗色/亮色主题\n\n## 快捷键\n| 快捷键 | 功能 |\n|--------|------|\n| Ctrl+S | 保存 |\n| Ctrl+N | 新建 |\n| Ctrl+P | 打印 |\n\n开始写作吧！📝',
+                    starred: false, deleted: false,
+                    createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
                 };
                 notes.push(welcomeNote);
                 saveNotes(notes);
-                console.log('welcome note created:', welcomeNote.id);
                 renderNoteList();
             }
         }
         
         function createNewNote() {
-            console.log('=== createNewNote ===');
-            // 先保存当前笔记
-            if (currentNote) {
-                saveCurrentNote();
-            }
-            
-            const note = {
-                id: generateId(),
-                title: '',
-                content: '',
-                starred: false,
-                deleted: false,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
-            };
-            
+            if (currentNote) saveCurrentNote();
+            const note = { id: generateId(), title: '', content: '', starred: false, deleted: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
             const notes = getNotes();
             notes.push(note);
             saveNotes(notes);
-            
             currentNote = note;
-            console.log('new note created:', note.id);
             renderEditor();
             renderNoteList();
             document.getElementById('noteTitle').focus();
         }
         
         function loadNote(id) {
-            console.log('=== loadNote ===', id);
-            // 先保存当前笔记
-            if (currentNote) {
-                saveCurrentNote();
-            }
-            
+            if (currentNote) saveCurrentNote();
             const notes = getNotes();
             const note = notes.find(n => n.id === id);
-            if (note) {
-                currentNote = note;
-                console.log('note loaded:', note.id);
-                renderEditor();
-                renderNoteList();
-            }
+            if (note) { currentNote = note; renderEditor(); renderNoteList(); }
         }
         
         function renderEditor() {
-            console.log('=== renderEditor ===');
             if (!currentNote) {
-                console.log('no currentNote');
+                document.getElementById('noteTitle').value = '';
+                document.getElementById('noteContent').value = '';
                 return;
             }
             document.getElementById('noteTitle').value = currentNote.title;
             document.getElementById('noteContent').value = currentNote.content;
+            document.getElementById('toggleStar').textContent = currentNote.starred ? '⭐' : '☆';
             updateWordCount();
             updateLastSaved();
+            // 如果当前在预览模式，更新预览
+            var preview = document.getElementById('preview');
+            if (!preview.classList.contains('hidden')) {
+                preview.innerHTML = parseMarkdown(currentNote.content);
+            }
         }
         
         function autoSave() {
             if (autoSaveTimer) clearTimeout(autoSaveTimer);
-            autoSaveTimer = setTimeout(function() {
-                console.log('autoSave timer fired');
-                saveCurrentNote();
-            }, 500);
+            autoSaveTimer = setTimeout(saveCurrentNote, 500);
         }
         
         function saveCurrentNote() {
-            console.log('=== saveCurrentNote ===');
-            if (!currentNote) {
-                console.log('no currentNote to save');
-                return;
-            }
-            
+            if (!currentNote) return;
             currentNote.title = document.getElementById('noteTitle').value;
             currentNote.content = document.getElementById('noteContent').value;
             currentNote.updatedAt = new Date().toISOString();
-            
-            console.log('saving note:', currentNote.id, 'title:', currentNote.title);
-            
             const notes = getNotes();
             const index = notes.findIndex(n => n.id === currentNote.id);
-            if (index !== -1) {
-                notes[index] = currentNote;
-                saveNotes(notes);
-                console.log('note saved');
-            }
-            
+            if (index !== -1) { notes[index] = currentNote; saveNotes(notes); }
             updateLastSaved();
             renderNoteList();
         }
         
         function updateLastSaved() {
-            const now = new Date();
-            document.getElementById('lastSaved').textContent = '已保存 ' + now.toLocaleTimeString('zh-CN');
+            document.getElementById('lastSaved').textContent = '已保存 ' + new Date().toLocaleTimeString('zh-CN');
         }
         
         function updateWordCount() {
-            const content = document.getElementById('noteContent').value;
-            const count = content.length;
-            document.getElementById('wordCount').textContent = count + ' 字';
+            document.getElementById('wordCount').textContent = document.getElementById('noteContent').value.length + ' 字';
+        }
+        
+        function toggleStar() {
+            if (!currentNote) return;
+            currentNote.starred = !currentNote.starred;
+            saveCurrentNote();
+            document.getElementById('toggleStar').textContent = currentNote.starred ? '⭐' : '☆';
+            renderNoteList();
         }
         
         function deleteNote() {
             if (!currentNote) return;
-            if (confirm('确定要删除这篇笔记吗？')) {
-                const notes = getNotes();
-                const filtered = notes.filter(n => n.id !== currentNote.id);
-                saveNotes(filtered);
+            if (currentNote.deleted) {
+                if (!confirm('确定要永久删除这篇笔记吗？')) return;
+                var notes = getNotes();
+                notes = notes.filter(function(n) { return n.id !== currentNote.id; });
+                saveNotes(notes);
                 currentNote = null;
-                renderEditor();
-                renderNoteList();
+            } else {
+                currentNote.deleted = true;
+                currentNote.updatedAt = new Date().toISOString();
+                saveCurrentNote();
             }
+            renderEditor();
+            renderNoteList();
         }
         
         function exportNote() {
             if (!currentNote) return;
-            const blob = new Blob([currentNote.content], { type: 'text/markdown' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
+            var blob = new Blob([currentNote.content], { type: 'text/markdown' });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
             a.href = url;
             a.download = (currentNote.title || 'untitled') + '.md';
             a.click();
             URL.revokeObjectURL(url);
         }
         
-        // ============ 渲染笔记列表 ============
-        function renderNoteList(searchQuery) {
-            console.log('=== renderNoteList ===');
-            let notes = getNotes();
-            notes = notes.filter(n => !n.deleted);
+        function importNote() {
+            var input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.md,.markdown,.txt';
+            input.onchange = function(e) {
+                var file = e.target.files[0];
+                if (!file) return;
+                var reader = new FileReader();
+                reader.onload = function() {
+                    var text = reader.result;
+                    var note = { id: generateId(), title: file.name.replace(/\.[^/.]+$/, ''), content: text, starred: false, deleted: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+                    var notes = getNotes();
+                    notes.push(note);
+                    saveNotes(notes);
+                    currentNote = note;
+                    renderEditor();
+                    renderNoteList();
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        }
+        
+        function printNote() {
+            if (!currentNote) return;
+            var preview = document.getElementById('preview');
+            var content = document.getElementById('noteContent');
+            preview.innerHTML = parseMarkdown(currentNote.content);
+            preview.classList.remove('hidden');
+            content.classList.add('hidden');
+            window.print();
+            // 打印后自动切回编辑模式
+            setTimeout(function() {
+                preview.classList.add('hidden');
+                content.classList.remove('hidden');
+            }, 100);
+        }
+        
+        // ============ Markdown 编辑器工具栏 ============
+        function insertMarkdown(command) {
+            var textarea = document.getElementById('noteContent');
+            var start = textarea.selectionStart;
+            var end = textarea.selectionEnd;
+            var text = textarea.value;
+            var selected = text.substring(start, end);
+            var insert = ''; var offset = 0;
             
-            if (searchQuery) {
-                const lower = searchQuery.toLowerCase();
-                notes = notes.filter(n => 
-                    n.title.toLowerCase().includes(lower) || 
-                    n.content.toLowerCase().includes(lower)
-                );
+            switch(command) {
+                case 'bold': insert = '**' + (selected || '粗体') + '**'; offset = selected ? 0 : -2; break;
+                case 'italic': insert = '*' + (selected || '斜体') + '*'; offset = selected ? 0 : -1; break;
+                case 'h1': insert = '\n# ' + (selected || '标题1'); offset = selected ? 0 : -2; break;
+                case 'h2': insert = '\n## ' + (selected || '标题2'); offset = selected ? 0 : -2; break;
+                case 'h3': insert = '\n### ' + (selected || '标题3'); offset = selected ? 0 : -2; break;
+                case 'ul': insert = '\n- ' + (selected || '列表项'); offset = selected ? 0 : -2; break;
+                case 'ol': insert = '\n1. ' + (selected || '列表项'); offset = selected ? 0 : -2; break;
+                case 'check': insert = '\n- [ ] ' + (selected || '待办事项'); offset = selected ? 0 : -2; break;
+                case 'code': insert = '\n```\n' + (selected || '代码') + '\n```\n'; offset = selected ? 0 : -6; break;
+                case 'quote': insert = '\n> ' + (selected || '引用'); offset = selected ? 0 : -2; break;
+                case 'link': insert = '[' + (selected || '链接文本') + '](url)'; offset = selected ? 0 : -5; break;
+                case 'table': insert = '\n| 列1 | 列2 | 列3 |\n|-----|-----|-----|\n| 内容 | 内容 | 内容 |\n'; offset = -2; break;
+                case 'hr': insert = '\n---\n'; offset = -2; break;
             }
             
-            notes.sort(function(a, b) {
-                return new Date(b.updatedAt) - new Date(a.updatedAt);
+            textarea.value = text.substring(0, start) + insert + text.substring(end);
+            textarea.focus();
+            textarea.selectionStart = textarea.selectionEnd = start + insert.length + offset;
+            autoSave();
+        }
+        
+        // ============ Markdown 预览 ============
+        function togglePreview() {
+            var content = document.getElementById('noteContent');
+            var preview = document.getElementById('preview');
+            if (preview.classList.contains('hidden')) {
+                preview.innerHTML = parseMarkdown(content.value);
+                preview.classList.remove('hidden');
+                content.classList.add('hidden');
+            } else {
+                preview.classList.add('hidden');
+                content.classList.remove('hidden');
+            }
+        }
+        
+        function parseMarkdown(md) {
+            if (!md) return '';
+            var html = md;
+            
+            // 代码块（先处理）
+            html = html.replace(/^```(\w*)\n([\s\S]*?)```$/gm, function(m, lang, code) {
+                return '<pre><code>' + code.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</code></pre>';
             });
             
-            console.log('notes count:', notes.length);
+            // 标题
+            html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+            html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+            html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
             
-            const listEl = document.getElementById('noteList');
+            // 任务列表
+            html = html.replace(/^- \[([ xX])\] (.+)$/gm, function(m, c, t) {
+                var checked = c.toLowerCase() === 'x' ? 'checked' : '';
+                return '<li style="list-style:none"><input type="checkbox" ' + checked + ' disabled> ' + t + '</li>';
+            });
+            
+            // 无序列表
+            html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
+            // 有序列表
+            html = html.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+            
+            // 引用
+            html = html.replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>');
+            
+            // 表格
+            html = html.replace(/^\|(.+)\|\n\|[-| ]+\|((?:\n\|.*\|)*)/gm, function(m, header, body) {
+                var headers = header.split('|').map(function(h) { return h.trim(); }).filter(function(h) { return h; });
+                var rows = body.trim().split('\n').map(function(row) {
+                    return row.split('|').map(function(c) { return c.trim(); }).filter(function(c) { return c; });
+                });
+                var t = '<table><thead><tr>';
+                headers.forEach(function(h) { t += '<th>' + h + '</th>'; });
+                t += '</tr></thead><tbody>';
+                rows.forEach(function(row) {
+                    t += '<tr>';
+                    row.forEach(function(cell) { t += '<td>' + cell + '</td>'; });
+                    t += '</tr>';
+                });
+                t += '</tbody></table>';
+                return t;
+            });
+            
+            // 分割线
+            html = html.replace(/^(---|\*\*\*)$/gm, '<hr>');
+            
+            // 行内格式
+            html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+            html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+            html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+            html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+            
+            // 段落
+            html = html.split('\n\n').map(function(p) {
+                p = p.trim();
+                if (!p || p.startsWith('<h') || p.startsWith('<pre') || p.startsWith('<blockquote') || 
+                    p.startsWith('<ul') || p.startsWith('<li') || p.startsWith('<table') || p.startsWith('<hr')) return p;
+                return '<p>' + p + '</p>';
+            }).join('\n');
+            
+            // 列表包裹
+            html = html.replace(/((?:<li>.*?<\/li>\n?)+)/g, '<ul>$1</ul>');
+            html = html.replace(/<\/ul>\s*<ul>/g, '');
+            
+            return html;
+        }
+        
+        // ============ 渲染笔记列表 ============
+        function renderNoteList() {
+            var notes = getNotes();
+            var keyword = document.getElementById('searchInput').value;
+            
+            if (currentFilter === 'all') notes = notes.filter(function(n) { return !n.deleted; });
+            else if (currentFilter === 'starred') notes = notes.filter(function(n) { return n.starred && !n.deleted; });
+            else if (currentFilter === 'trash') notes = notes.filter(function(n) { return n.deleted; });
+            
+            if (keyword) {
+                var lower = keyword.toLowerCase();
+                notes = notes.filter(function(n) {
+                    return n.title.toLowerCase().includes(lower) || n.content.toLowerCase().includes(lower);
+                });
+            }
+            
+            notes.sort(function(a, b) { return new Date(b.updatedAt) - new Date(a.updatedAt); });
+            
+            var listEl = document.getElementById('noteList');
             listEl.innerHTML = notes.map(function(note) {
-                const preview = note.content.replace(/[#*`\[\]()]|</g, '').substring(0, 50);
-                const date = new Date(note.updatedAt).toLocaleDateString('zh-CN');
-                const active = currentNote && currentNote.id === note.id ? 'active' : '';
+                var preview = note.content.replace(/[#*`\[\]()<>]|<\/?[^>]+(>|$)/g, '').substring(0, 50);
+                var date = new Date(note.updatedAt).toLocaleDateString('zh-CN');
+                var active = currentNote && currentNote.id === note.id ? 'active' : '';
                 return '<div class="note-item ' + active + '" onclick="loadNote(\'' + note.id + '\')">' +
                     '<div class="note-title">' + (note.title || '无标题') + '</div>' +
                     '<div class="note-preview">' + (preview || '空笔记') + '</div>' +
-                    '<div class="note-date">' + date + '</div>' +
-                    '</div>';
+                    '<div class="note-date">' + date + '</div></div>';
             }).join('');
-            
-            console.log('renderNoteList done, rendered:', notes.length, 'items');
         }
         
         // ============ 启动 ============
