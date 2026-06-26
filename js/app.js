@@ -10,11 +10,13 @@ class NotesApp {
     }
 
     async init() {
+        console.log('=== NotesApp init ===');
         await storage.init();
         this.applyTheme();
         this.bindEvents();
         await this.renderNoteList();
         await this.createWelcomeNote();
+        console.log('=== NotesApp init done ===');
     }
 
     applyTheme() {
@@ -32,11 +34,16 @@ class NotesApp {
     }
 
     bindEvents() {
+        console.log('=== bindEvents ===');
+        
         // 主题切换
         document.getElementById('themeToggle').addEventListener('click', () => this.toggleTheme());
 
         // 新建笔记
-        document.getElementById('newNote').addEventListener('click', () => this.createNewNote());
+        document.getElementById('newNote').addEventListener('click', () => {
+            console.log('newNote clicked');
+            this.createNewNote();
+        });
 
         // 搜索
         document.getElementById('searchInput').addEventListener('input', (e) => {
@@ -55,14 +62,21 @@ class NotesApp {
         });
 
         // 编辑器事件
-        document.getElementById('noteTitle').addEventListener('input', () => this.autoSave());
+        document.getElementById('noteTitle').addEventListener('input', () => {
+            console.log('title input, currentNote:', this.currentNote?.id);
+            this.autoSave();
+        });
         document.getElementById('noteContent').addEventListener('input', () => {
+            console.log('content input, currentNote:', this.currentNote?.id);
             this.autoSave();
             this.updateWordCount();
         });
 
         // 操作按钮
-        document.getElementById('saveNote').addEventListener('click', () => this.saveCurrentNote());
+        document.getElementById('saveNote').addEventListener('click', () => {
+            console.log('saveNote clicked, currentNote:', this.currentNote?.id);
+            this.saveCurrentNote();
+        });
         document.getElementById('togglePreview').addEventListener('click', () => this.togglePreview());
         document.getElementById('toggleStar').addEventListener('click', () => this.toggleStar());
         document.getElementById('deleteNote').addEventListener('click', () => this.deleteNote());
@@ -73,7 +87,10 @@ class NotesApp {
 
         // 工具栏事件
         document.querySelectorAll('.toolbar-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => this.insertMarkdown(e.target.dataset.command));
+            btn.addEventListener('click', (e) => {
+                console.log('toolbar button:', e.target.dataset.command);
+                this.insertMarkdown(e.target.dataset.command);
+            });
         });
 
         // 键盘快捷键
@@ -81,6 +98,7 @@ class NotesApp {
             if (e.ctrlKey || e.metaKey) {
                 if (e.key === 's') {
                     e.preventDefault();
+                    console.log('Ctrl+S pressed');
                     this.saveCurrentNote();
                 } else if (e.key === 'n') {
                     e.preventDefault();
@@ -95,10 +113,10 @@ class NotesApp {
             }
         });
 
-        // 页面卸载前保存（同步保存）
+        // 页面卸载前保存
         window.addEventListener('beforeunload', () => {
             if (this.currentNote) {
-                // 同步保存到 localStorage 作为备份
+                console.log('beforeunload, saving note:', this.currentNote.id);
                 const note = {
                     id: this.currentNote.id,
                     title: document.getElementById('noteTitle').value,
@@ -114,92 +132,35 @@ class NotesApp {
     }
 
     async createWelcomeNote() {
+        console.log('=== createWelcomeNote ===');
         const notes = await storage.getActive();
+        console.log('active notes count:', notes.length);
         if (notes.length === 0) {
             const welcomeNote = {
                 id: this.generateId(),
                 title: '👋 欢迎使用酷软笔记',
                 content: `# 欢迎使用酷软笔记
 
-这是一个纯前端的笔记应用，数据保存在本地，无需联网即可使用。
+这是一个纯前端的笔记应用，数据保存在本地。
 
-## 功能特性
+## 功能
 
-- ✅ **Markdown 编辑**：支持标题、列表、代码块、表格、任务列表、脚注等
-- ✅ **实时预览**：点击预览按钮查看渲染效果
-- ✅ **本地存储**：数据保存在浏览器 IndexedDB，安全可靠
-- ✅ **离线可用**：支持 PWA，离线也能使用
-- ✅ **搜索功能**：快速查找历史笔记
-- ✅ **收藏功能**：标记重要笔记
-- ✅ **导出功能**：支持导出为 Markdown 文件
-- ✅ **导入功能**：支持导入 Markdown 文件
-- ✅ **回收站**：误删笔记可恢复
-- ✅ **暗色/亮色主题**：一键切换
-- ✅ **打印功能**：支持打印笔记
-- ✅ **分享功能**：复制笔记链接
+- ✅ Markdown 编辑
+- ✅ 实时预览
+- ✅ 本地存储
+- ✅ 搜索功能
+- ✅ 收藏功能
+- ✅ 导出功能
+- ✅ 打印功能
 
 ## 快捷键
 
 | 快捷键 | 功能 |
 |--------|------|
-| Ctrl + S | 保存笔记 |
-| Ctrl + N | 新建笔记 |
-| Ctrl + F | 搜索笔记 |
-| Ctrl + P | 打印笔记 |
-
-## Markdown 语法示例
-
-### 文本格式
-
-**粗体文字** 和 *斜体文字* 和 ~~删除线~~
-
-### 任务列表
-
-- [ ] 待办事项 1
-- [x] 已完成事项 2
-- [ ] 待办事项 3
-
-### 列表
-
-- 无序列表项 1
-- 无序列表项 2
-- 无序列表项 3
-
-1. 有序列表项 1
-2. 有序列表项 2
-3. 有序列表项 3
-
-### 代码块
-
-\`\`\`javascript
-function hello() {
-    console.log('Hello, World!');
-}
-\`\`\`
-
-### 表格
-
-| 功能 | 状态 |
-|------|------|
-| 编辑 | ✅ |
-| 预览 | ✅ |
-| 导出 | ✅ |
-
-### 引用
-
-> 这是一段引用文字
-
-### 链接
-
-[酷软科技](https://www.coolsoft.com)
-
-### 脚注
-
-这是一个带有脚注的文本[^1]
-
-[^1]: 这是脚注内容
-
----
+| Ctrl + S | 保存 |
+| Ctrl + N | 新建 |
+| Ctrl + F | 搜索 |
+| Ctrl + P | 打印 |
 
 开始写作吧！📝`,
                 starred: false,
@@ -208,6 +169,7 @@ function hello() {
                 updatedAt: new Date().toISOString()
             };
             await storage.add(welcomeNote);
+            console.log('welcome note created:', welcomeNote.id);
             await this.renderNoteList();
         }
     }
@@ -217,6 +179,7 @@ function hello() {
     }
 
     async createNewNote() {
+        console.log('=== createNewNote ===');
         // 先保存当前笔记
         if (this.currentNote) {
             await this.saveCurrentNote();
@@ -233,12 +196,14 @@ function hello() {
         };
         await storage.add(note);
         this.currentNote = note;
+        console.log('new note created:', note.id, 'currentNote set to:', this.currentNote.id);
         this.renderEditor();
         await this.renderNoteList();
         document.getElementById('noteTitle').focus();
     }
 
     async loadNote(id) {
+        console.log('=== loadNote ===', id);
         // 先保存当前笔记
         if (this.currentNote) {
             await this.saveCurrentNote();
@@ -247,13 +212,18 @@ function hello() {
         const note = await storage.get(id);
         if (note) {
             this.currentNote = note;
+            console.log('note loaded:', note.id, 'currentNote set to:', this.currentNote.id);
             this.renderEditor();
             await this.renderNoteList();
         }
     }
 
     renderEditor() {
-        if (!this.currentNote) return;
+        console.log('=== renderEditor ===');
+        if (!this.currentNote) {
+            console.log('no currentNote to render');
+            return;
+        }
         document.getElementById('noteTitle').value = this.currentNote.title;
         document.getElementById('noteContent').value = this.currentNote.content;
         document.getElementById('toggleStar').textContent = this.currentNote.starred ? '⭐' : '☆';
@@ -264,15 +234,24 @@ function hello() {
 
     autoSave() {
         if (this.autoSaveTimer) clearTimeout(this.autoSaveTimer);
-        this.autoSaveTimer = setTimeout(() => this.saveCurrentNote(), 500);
+        this.autoSaveTimer = setTimeout(() => {
+            console.log('autoSave timer fired');
+            this.saveCurrentNote();
+        }, 500);
     }
 
     async saveCurrentNote() {
-        if (!this.currentNote) return;
+        console.log('=== saveCurrentNote ===');
+        if (!this.currentNote) {
+            console.log('no currentNote to save');
+            return;
+        }
         this.currentNote.title = document.getElementById('noteTitle').value;
         this.currentNote.content = document.getElementById('noteContent').value;
         this.currentNote.updatedAt = new Date().toISOString();
+        console.log('saving note:', this.currentNote.id, 'title:', this.currentNote.title);
         await storage.update(this.currentNote);
+        console.log('note saved');
         this.updateLastSaved();
         await this.renderNoteList();
     }
@@ -309,70 +288,22 @@ function hello() {
         let cursorOffset = 0;
 
         switch(command) {
-            case 'bold':
-                insertion = `**${selectedText || '粗体'}**`;
-                cursorOffset = selectedText ? 0 : -2;
-                break;
-            case 'italic':
-                insertion = `*${selectedText || '斜体'}*`;
-                cursorOffset = selectedText ? 0 : -1;
-                break;
-            case 'underline':
-                insertion = `<u>${selectedText || '下划线'}</u>`;
-                cursorOffset = selectedText ? 0 : -4;
-                break;
-            case 'strikethrough':
-                insertion = `~~${selectedText || '删除线'}~~`;
-                cursorOffset = selectedText ? 0 : -2;
-                break;
-            case 'h1':
-                insertion = `\n# ${selectedText || '标题1'}`;
-                cursorOffset = selectedText ? 0 : -2;
-                break;
-            case 'h2':
-                insertion = `\n## ${selectedText || '标题2'}`;
-                cursorOffset = selectedText ? 0 : -2;
-                break;
-            case 'h3':
-                insertion = `\n### ${selectedText || '标题3'}`;
-                cursorOffset = selectedText ? 0 : -2;
-                break;
-            case 'ul':
-                insertion = `\n- ${selectedText || '列表项'}`;
-                cursorOffset = selectedText ? 0 : -2;
-                break;
-            case 'ol':
-                insertion = `\n1. ${selectedText || '列表项'}`;
-                cursorOffset = selectedText ? 0 : -2;
-                break;
-            case 'check':
-                insertion = `\n- [ ] ${selectedText || '待办事项'}`;
-                cursorOffset = selectedText ? 0 : -2;
-                break;
-            case 'code':
-                insertion = `\n\`\`\`\n${selectedText || '代码'}\n\`\`\`\n`;
-                cursorOffset = selectedText ? 0 : -6;
-                break;
-            case 'quote':
-                insertion = `\n> ${selectedText || '引用'}`;
-                cursorOffset = selectedText ? 0 : -2;
-                break;
-            case 'link':
-                insertion = `[${selectedText || '链接文本'}](url)`;
-                cursorOffset = selectedText ? 0 : -5;
-                break;
-            case 'image':
-                insertion = `![${selectedText || '图片描述'}](url)`;
-                cursorOffset = selectedText ? 0 : -5;
-                break;
-            case 'table':
-                insertion = `\n| 列1 | 列2 | 列3 |\n|-----|-----|-----|\n| 内容 | 内容 | 内容 |\n`;
-                cursorOffset = -2;
-                break;
-            case 'hr':
-                insertion = `\n---\n`;
-                cursorOffset = -2;
-                break;
+            case 'bold': insertion = `**${selectedText || '粗体'}**`; cursorOffset = selectedText ? 0 : -2; break;
+            case 'italic': insertion = `*${selectedText || '斜体'}*`; cursorOffset = selectedText ? 0 : -1; break;
+            case 'underline': insertion = `<u>${selectedText || '下划线'}</u>`; cursorOffset = selectedText ? 0 : -4; break;
+            case 'strikethrough': insertion = `~~${selectedText || '删除线'}~~`; cursorOffset = selectedText ? 0 : -2; break;
+            case 'h1': insertion = `\n# ${selectedText || '标题1'}`; cursorOffset = selectedText ? 0 : -2; break;
+            case 'h2': insertion = `\n## ${selectedText || '标题2'}`; cursorOffset = selectedText ? 0 : -2; break;
+            case 'h3': insertion = `\n### ${selectedText || '标题3'}`; cursorOffset = selectedText ? 0 : -2; break;
+            case 'ul': insertion = `\n- ${selectedText || '列表项'}`; cursorOffset = selectedText ? 0 : -2; break;
+            case 'ol': insertion = `\n1. ${selectedText || '列表项'}`; cursorOffset = selectedText ? 0 : -2; break;
+            case 'check': insertion = `\n- [ ] ${selectedText || '待办事项'}`; cursorOffset = selectedText ? 0 : -2; break;
+            case 'code': insertion = `\n\`\`\`\n${selectedText || '代码'}\n\`\`\`\n`; cursorOffset = selectedText ? 0 : -6; break;
+            case 'quote': insertion = `\n> ${selectedText || '引用'}`; cursorOffset = selectedText ? 0 : -2; break;
+            case 'link': insertion = `[${selectedText || '链接文本'}](url)`; cursorOffset = selectedText ? 0 : -5; break;
+            case 'image': insertion = `![${selectedText || '图片描述'}](url)`; cursorOffset = selectedText ? 0 : -5; break;
+            case 'table': insertion = `\n| 列1 | 列2 | 列3 |\n|-----|-----|-----|\n| 内容 | 内容 | 内容 |\n`; cursorOffset = -2; break;
+            case 'hr': insertion = `\n---\n`; cursorOffset = -2; break;
         }
 
         textarea.value = text.substring(0, start) + insertion + text.substring(end);
@@ -405,12 +336,10 @@ function hello() {
     async deleteNote() {
         if (!this.currentNote) return;
         if (this.currentNote.deleted) {
-            // 永久删除
             if (confirm('确定要永久删除这篇笔记吗？')) {
                 await storage.delete(this.currentNote.id);
             }
         } else {
-            // 移入回收站
             this.currentNote.deleted = true;
             this.currentNote.updatedAt = new Date().toISOString();
             await storage.update(this.currentNote);
@@ -458,7 +387,6 @@ function hello() {
 
     printNote() {
         if (!this.currentNote) return;
-        // 先显示预览
         const preview = document.getElementById('preview');
         const content = document.getElementById('noteContent');
         if (preview.classList.contains('hidden')) {
@@ -466,13 +394,11 @@ function hello() {
             preview.classList.remove('hidden');
             content.classList.add('hidden');
         }
-        // 打印
         window.print();
     }
 
     shareNote() {
         if (!this.currentNote) return;
-        // 复制笔记内容到剪贴板
         const text = `# ${this.currentNote.title}\n\n${this.currentNote.content}`;
         navigator.clipboard.writeText(text).then(() => {
             alert('笔记内容已复制到剪贴板！');
@@ -482,6 +408,7 @@ function hello() {
     }
 
     async renderNoteList() {
+        console.log('=== renderNoteList ===', this.filter);
         let notes = [];
         if (this.filter === 'all') {
             notes = await storage.getActive();
@@ -490,6 +417,7 @@ function hello() {
         } else if (this.filter === 'trash') {
             notes = await storage.getDeleted();
         }
+        console.log('notes count:', notes.length);
 
         if (this.searchQuery) {
             const lower = this.searchQuery.toLowerCase();
@@ -499,7 +427,6 @@ function hello() {
             );
         }
 
-        // 按更新时间排序
         notes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
 
         const listEl = document.getElementById('noteList');
@@ -517,6 +444,7 @@ function hello() {
                 </div>
             `;
         }).join('');
+        console.log('renderNoteList done, rendered:', notes.length, 'items');
     }
 }
 
