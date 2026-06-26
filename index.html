@@ -10,6 +10,9 @@
 </head>
 <body>
     <div class="app">
+        <!-- 主题切换 -->
+        <button class="theme-toggle" id="themeToggle" title="切换主题">🌙</button>
+        
         <!-- 侧边栏 -->
         <aside class="sidebar">
             <div class="sidebar-header">
@@ -36,6 +39,7 @@
                     <button id="toggleStar" title="收藏">☆</button>
                     <button id="deleteNote" title="删除">🗑️</button>
                     <button id="exportNote" title="导出">📤</button>
+                    <button id="importNote" title="导入">📥</button>
                 </div>
             </div>
             <div class="editor-body">
@@ -45,6 +49,7 @@
             <div class="editor-footer">
                 <span id="lastSaved">未保存</span>
                 <span id="wordCount">0 字</span>
+                <span id="noteTags" class="note-tags"></span>
             </div>
         </main>
     </div>

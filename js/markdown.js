@@ -1,47 +1,8 @@
-// 简易 Markdown 解析器
+// 增强版 Markdown 解析器
 class MarkdownParser {
     constructor() {
-        this.rules = [
-            // 标题
-            { regex: /^(#{1-6})\s+(.+)$/gm, replace: (match, level, text) => `<h${level}>${this.parseInline(text)}</h${level}>` },
-            // 代码块
-            { regex: /^```(\w*)\n([\s\S]*?)```$/gm, replace: (match, lang, code) => `<pre><code class="language-${lang}">${this.escapeHtml(code)}</code></pre>` },
-            // 行内代码
-            { regex: /`([^`]+)`/g, replace: (match, code) => `<code>${this.escapeHtml(code)}</code>` },
-            // 粗体
-            { regex: /\*\*([^*]+)\*\*/g, replace: (match, text) => `<strong>${this.parseInline(text)}</strong>` },
-            // 斜体
-            { regex: /\*([^*]+)\*/g, replace: (match, text) => `<em>${this.parseInline(text)}</em>` },
-            // 引用
-            { regex: /^>\s+(.+)$/gm, replace: (match, text) => `<blockquote>${this.parseInline(text)}</blockquote>` },
-            // 无序列表
-            { regex: /^-\s+(.+)$/gm, replace: (match, text) => `<li>${this.parseInline(text)}</li>` },
-            // 有序列表
-            { regex: /^\d+\.\s+(.+)$/gm, replace: (match, text) => `<li>${this.parseInline(text)}</li>` },
-            // 链接
-            { regex: /\[([^\]]+)\]\(([^)]+)\)/g, replace: (match, text, url) => `<a href="${url}" target="_blank">${this.parseInline(text)}</a>` },
-            // 图片
-            { regex: /!\[([^\]]*)\]\(([^)]+)\)/g, replace: (match, alt, url) => `<img src="${url}" alt="${alt}">` },
-            // 分割线
-            { regex: /^---$/gm, replace: () => `<hr>` },
-            // 表格
-            { regex: /^\|(.+)\|\n\|[-\s|]+\|\n((?:\|.+\|\n?)*)/gm, replace: (match, header, body) => {
-                const headers = header.split('|').map(h => h.trim()).filter(h => h);
-                const rows = body.trim().split('\n').map(row => 
-                    row.split('|').map(c => c.trim()).filter(c => c)
-                );
-                let html = '<table><thead><tr>';
-                headers.forEach(h => html += `<th>${this.parseInline(h)}</th>`);
-                html += '</tr></thead><tbody>';
-                rows.forEach(row => {
-                    html += '<tr>';
-                    row.forEach(cell => html += `<td>${this.parseInline(cell)}</td>`);
-                    html += '</tr>';
-                });
-                html += '</tbody></table>';
-                return html;
-            }}
-        ];
+        this.footnotes = new Map();
+        this.footnoteIndex = 0;
     }
 
     escapeHtml(text) {
@@ -58,40 +19,112 @@ class MarkdownParser {
         result = result.replace(/\*\*([^*]+)\*\*/g, (match, text) => `<strong>${text}</strong>`);
         // 斜体
         result = result.replace(/\*([^*]+)\*/g, (match, text) => `<em>${text}</em>`);
+        // 删除线
+        result = result.replace(/~~([^~]+)~~/g, (match, text) => `<del>${text}</del>`);
         // 链接
         result = result.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => `<a href="${url}" target="_blank">${text}</a>`);
         // 图片
         result = result.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, alt, url) => `<img src="${url}" alt="${alt}">`);
+        // 脚注引用
+        result = result.replace(/\[\^([^\]]+)\]/g, (match, id) => {
+            if (!this.footnotes.has(id)) {
+                this.footnoteIndex++;
+                this.footnotes.set(id, this.footnoteIndex);
+            }
+            return `<sup id="fnref-${this.footnotes.get(id)}"><a href="#fn-${this.footnotes.get(id)}">[${this.footnotes.get(id)}]</a></sup>`;
+        });
         return result;
     }
 
     parse(markdown) {
         if (!markdown) return '';
+        this.footnotes.clear();
+        this.footnoteIndex = 0;
         let html = markdown;
-        
+
         // 处理代码块（先处理，避免被其他规则干扰）
         html = html.replace(/^```(\w*)\n([\s\S]*?)```$/gm, (match, lang, code) => {
             return `<pre><code class="language-${lang}">${this.escapeHtml(code)}</code></pre>`;
         });
 
-        // 处理其他规则
-        this.rules.forEach(rule => {
-            if (rule.regex.source.includes('^```')) return; // 跳过代码块规则
-            html = html.replace(rule.regex, rule.replace);
+        // 处理标题
+        html = html.replace(/^(#{1-6})\s+(.+)$/gm, (match, level, text) => `<h${level}>${this.parseInline(text)}</h${level}>`);
+
+        // 处理引用
+        html = html.replace(/^>\s+(.+)$/gm, (match, text) => `<blockquote>${this.parseInline(text)}</blockquote>`);
+
+        // 处理表格
+        html = html.replace(/^\|(.+)\|\n\|[-\s|]+\|\n((?:\|.+\|\n?)*)/gm, (match, header, body) => {
+            const headers = header.split('|').map(h => h.trim()).filter(h => h);
+            const rows = body.trim().split('\n').map(row => 
+                row.split('|').map(c => c.trim()).filter(c => c)
+            );
+            let tableHtml = '<table><thead><tr>';
+            headers.forEach(h => tableHtml += `<th>${this.parseInline(h)}</th>`);
+            tableHtml += '</tr></thead><tbody>';
+            rows.forEach(row => {
+                tableHtml += '<tr>';
+                row.forEach(cell => tableHtml += `<td>${this.parseInline(cell)}</td>`);
+                tableHtml += '</tr>';
+            });
+            tableHtml += '</tbody></table>';
+            return tableHtml;
         });
 
+        // 处理任务列表
+        html = html.replace(/^\s*[-*]\s+\[([ xX])\]\s+(.+)$/gm, (match, checkbox, text) => {
+            const checked = checkbox.toLowerCase() === 'x' ? 'checked' : '';
+            return `<li class="task-list-item"><input type="checkbox" ${checked} disabled> ${this.parseInline(text)}</li>`;
+        });
+
+        // 处理无序列表
+        html = html.replace(/^[-*]\s+(?!\[)(.+)$/gm, (match, text) => `<li>${this.parseInline(text)}</li>`);
+
+        // 处理有序列表
+        html = html.replace(/^\d+\.\s+(.+)$/gm, (match, text) => `<li>${this.parseInline(text)}</li>`);
+
         // 处理列表包裹
-        html = html.replace(/(<li>.*?<\/li>)/gs, (match) => `<ul>${match}</ul>`);
+        html = html.replace(/((?:<li>.*?<\/li>\n?)+)/g, (match) => {
+            if (match.includes('task-list-item')) {
+                return `<ul class="task-list">${match}</ul>`;
+            }
+            return `<ul>${match}</ul>`;
+        });
         html = html.replace(/<\/ul>\s*<ul>/g, '');
+
+        // 处理分割线
+        html = html.replace(/^(---|\*\*\*|___)$/gm, '<hr>');
+
+        // 处理脚注定义
+        html = html.replace(/^\[\^([^\]]+)\]:\s+(.+)$/gm, (match, id, text) => {
+            const index = this.footnotes.get(id) || ++this.footnoteIndex;
+            this.footnotes.set(id, index);
+            return `<li id="fn-${index}"><sup><a href="#fnref-${index}">[${index}]</a></sup> ${this.parseInline(text)}</li>`;
+        });
 
         // 处理段落
         html = html.split('\n\n').map(p => {
             if (p.startsWith('<h') || p.startsWith('<pre') || p.startsWith('<blockquote') || 
-                p.startsWith('<ul') || p.startsWith('<table') || p.startsWith('<hr')) {
+                p.startsWith('<ul') || p.startsWith('<table') || p.startsWith('<hr') || p.startsWith('<li')) {
                 return p;
             }
             return `<p>${this.parseInline(p)}</p>`;
         }).join('\n');
+
+        // 处理脚注列表
+        if (this.footnotes.size > 0) {
+            let footnotesHtml = '<section class="footnotes"><ol>';
+            for (let i = 1; i <= this.footnoteIndex; i++) {
+                const fn = document.createElement('div');
+                fn.innerHTML = html;
+                const li = fn.querySelector(`#fn-${i}`);
+                if (li) {
+                    footnotesHtml += li.outerHTML;
+                }
+            }
+            footnotesHtml += '</ol></section>';
+            html = html.replace(/<li id="fn-\d+">.*?<\/li>/gs, '') + footnotesHtml;
+        }
 
         return html;
     }

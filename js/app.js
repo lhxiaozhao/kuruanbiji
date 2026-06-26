@@ -5,17 +5,36 @@ class NotesApp {
         this.filter = 'all';
         this.searchQuery = '';
         this.autoSaveTimer = null;
+        this.theme = localStorage.getItem('theme') || 'dark';
         this.init();
     }
 
     async init() {
         await storage.init();
+        this.applyTheme();
         this.bindEvents();
         this.renderNoteList();
         this.createWelcomeNote();
     }
 
+    applyTheme() {
+        document.documentElement.setAttribute('data-theme', this.theme);
+        const toggleBtn = document.getElementById('themeToggle');
+        if (toggleBtn) {
+            toggleBtn.textContent = this.theme === 'dark' ? '🌙' : '☀️';
+        }
+    }
+
+    toggleTheme() {
+        this.theme = this.theme === 'dark' ? 'light' : 'dark';
+        localStorage.setItem('theme', this.theme);
+        this.applyTheme();
+    }
+
     bindEvents() {
+        // 主题切换
+        document.getElementById('themeToggle').addEventListener('click', () => this.toggleTheme());
+
         // 新建笔记
         document.getElementById('newNote').addEventListener('click', () => this.createNewNote());
 
@@ -47,6 +66,7 @@ class NotesApp {
         document.getElementById('toggleStar').addEventListener('click', () => this.toggleStar());
         document.getElementById('deleteNote').addEventListener('click', () => this.deleteNote());
         document.getElementById('exportNote').addEventListener('click', () => this.exportNote());
+        document.getElementById('importNote').addEventListener('click', () => this.importNote());
 
         // 键盘快捷键
         document.addEventListener('keydown', (e) => {
@@ -77,13 +97,16 @@ class NotesApp {
 
 ## 功能特性
 
-- ✅ **Markdown 编辑**：支持标题、列表、代码块、表格等
+- ✅ **Markdown 编辑**：支持标题、列表、代码块、表格、任务列表、脚注等
 - ✅ **实时预览**：点击预览按钮查看渲染效果
 - ✅ **本地存储**：数据保存在浏览器 IndexedDB，安全可靠
 - ✅ **离线可用**：支持 PWA，离线也能使用
 - ✅ **搜索功能**：快速查找历史笔记
 - ✅ **收藏功能**：标记重要笔记
 - ✅ **导出功能**：支持导出为 Markdown 文件
+- ✅ **导入功能**：支持导入 Markdown 文件
+- ✅ **回收站**：误删笔记可恢复
+- ✅ **暗色/亮色主题**：一键切换
 
 ## 快捷键
 
@@ -97,7 +120,13 @@ class NotesApp {
 
 ### 文本格式
 
-**粗体文字** 和 *斜体文字*
+**粗体文字** 和 *斜体文字* 和 ~~删除线~~
+
+### 任务列表
+
+- [ ] 待办事项 1
+- [x] 已完成事项 2
+- [ ] 待办事项 3
 
 ### 列表
 
@@ -132,6 +161,12 @@ function hello() {
 ### 链接
 
 [酷软科技](https://www.coolsoft.com)
+
+### 脚注
+
+这是一个带有脚注的文本[^1]
+
+[^1]: 这是脚注内容
 
 ---
 
@@ -182,6 +217,7 @@ function hello() {
         document.getElementById('toggleStar').textContent = this.currentNote.starred ? '⭐' : '☆';
         this.updateWordCount();
         this.updateLastSaved();
+        this.renderTags();
     }
 
     autoSave() {
@@ -208,6 +244,17 @@ function hello() {
         const content = document.getElementById('noteContent').value;
         const count = content.length;
         document.getElementById('wordCount').textContent = `${count} 字`;
+    }
+
+    renderTags() {
+        const tagsEl = document.getElementById('noteTags');
+        if (!this.currentNote || !this.currentNote.tags) {
+            tagsEl.innerHTML = '';
+            return;
+        }
+        tagsEl.innerHTML = this.currentNote.tags.map(tag => 
+            `<span class="tag">${tag}</span>`
+        ).join('');
     }
 
     togglePreview() {
@@ -260,6 +307,31 @@ function hello() {
         URL.revokeObjectURL(url);
     }
 
+    async importNote() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.md,.markdown,.txt';
+        input.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const text = await file.text();
+            const note = {
+                id: this.generateId(),
+                title: file.name.replace(/\.[^/.]+$/, ''),
+                content: text,
+                starred: false,
+                deleted: false,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+            await storage.add(note);
+            this.currentNote = note;
+            this.renderEditor();
+            this.renderNoteList();
+        };
+        input.click();
+    }
+
     async renderNoteList() {
         let notes = [];
         if (this.filter === 'all') {
@@ -286,9 +358,11 @@ function hello() {
             const preview = note.content.replace(/[#*`\[\]()]|</g, '').substring(0, 50);
             const date = new Date(note.updatedAt).toLocaleDateString('zh-CN');
             const active = this.currentNote && this.currentNote.id === note.id ? 'active' : '';
+            const tags = note.tags ? note.tags.map(t => `<span class="tag">${t}</span>`).join('') : '';
             return `
                 <div class="note-item ${active}" onclick="app.loadNote('${note.id}')">
                     <div class="note-title">${note.title || '无标题'}</div>
+                    ${tags ? `<div class="note-tags">${tags}</div>` : ''}
                     <div class="note-preview">${preview || '空笔记'}</div>
                     <div class="note-date">${date}</div>
                 </div>
