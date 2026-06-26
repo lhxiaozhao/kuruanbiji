@@ -11,6 +11,20 @@ class MarkdownParser {
         return div.innerHTML;
     }
 
+    isSafeUrl(url) {
+        try {
+            // 处理相对路径
+            const absolute = url.startsWith('./') || url.startsWith('../') || url.startsWith('/') 
+                ? new URL(url, location.origin) 
+                : new URL(url);
+            const blocked = ['javascript:', 'vbscript:', 'data:', 'blob:'];
+            return !blocked.some(p => absolute.protocol.startsWith(p));
+        } catch {
+            // 无法解析的 URL，拒绝
+            return false;
+        }
+    }
+
     parseInline(text) {
         let result = text;
         // 行内代码
@@ -21,10 +35,16 @@ class MarkdownParser {
         result = result.replace(/\*([^*]+)\*/g, (match, text) => `<em>${text}</em>`);
         // 删除线
         result = result.replace(/~~([^~]+)~~/g, (match, text) => `<del>${text}</del>`);
-        // 链接
-        result = result.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => `<a href="${url}" target="_blank">${text}</a>`);
-        // 图片
-        result = result.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, alt, url) => `<img src="${url}" alt="${alt}">`);
+        // 链接（安全校验）
+        result = result.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => {
+            if (!this.isSafeUrl(url)) return this.escapeHtml(match);
+            return `<a href="${this.escapeHtml(url)}" target="_blank" rel="noopener">${text}</a>`;
+        });
+        // 图片（安全校验）
+        result = result.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, alt, url) => {
+            if (!this.isSafeUrl(url)) return this.escapeHtml(match);
+            return `<img src="${this.escapeHtml(url)}" alt="${this.escapeHtml(alt)}">`;
+        });
         // 脚注引用
         result = result.replace(/\[\^([^\]]+)\]/g, (match, id) => {
             if (!this.footnotes.has(id)) {
