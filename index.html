@@ -4,95 +4,380 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>酷软笔记</title>
-    <link rel="stylesheet" href="css/style.css">
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#4a6cf7">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #fff; color: #333; height: 100vh; overflow: hidden; }
+        .app { display: flex; height: 100vh; }
+        
+        /* 侧边栏 */
+        .sidebar { width: 280px; background: #f8f9fa; border-right: 1px solid #dee2e6; display: flex; flex-direction: column; }
+        .sidebar-header { padding: 16px; border-bottom: 1px solid #dee2e6; display: flex; justify-content: space-between; align-items: center; }
+        .sidebar-header h1 { font-size: 16px; font-weight: 600; }
+        #newNote { width: 32px; height: 32px; border: none; border-radius: 6px; background: #4a6cf7; color: white; font-size: 18px; cursor: pointer; }
+        #newNote:hover { background: #3a56d4; }
+        .search-box { padding: 12px 16px; border-bottom: 1px solid #dee2e6; }
+        #searchInput { width: 100%; padding: 8px 12px; border: 1px solid #dee2e6; border-radius: 6px; font-size: 14px; outline: none; }
+        #searchInput:focus { border-color: #4a6cf7; }
+        .note-list { flex: 1; overflow-y: auto; padding: 8px; }
+        .note-item { padding: 12px; margin-bottom: 4px; border-radius: 6px; cursor: pointer; transition: background 0.2s; }
+        .note-item:hover { background: #e9ecef; }
+        .note-item.active { background: #4a6cf7; color: white; }
+        .note-title { font-size: 14px; font-weight: 500; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .note-preview { font-size: 12px; color: #6c757d; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px; }
+        .note-date { font-size: 11px; color: #adb5bd; }
+        
+        /* 编辑器 */
+        .editor { flex: 1; display: flex; flex-direction: column; }
+        .editor-header { padding: 12px 24px; border-bottom: 1px solid #dee2e6; display: flex; justify-content: space-between; align-items: center; }
+        #noteTitle { flex: 1; padding: 8px 12px; border: 1px solid #dee2e6; border-radius: 6px; font-size: 16px; font-weight: 500; outline: none; margin-right: 12px; }
+        #noteTitle:focus { border-color: #4a6cf7; }
+        .editor-actions { display: flex; gap: 6px; }
+        .editor-actions button { width: 32px; height: 32px; border: 1px solid #dee2e6; border-radius: 6px; background: #f8f9fa; cursor: pointer; font-size: 14px; }
+        .editor-actions button:hover { background: #4a6cf7; color: white; border-color: #4a6cf7; }
+        .editor-body { flex: 1; position: relative; }
+        #noteContent { width: 100%; height: 100%; padding: 24px; border: none; background: #fff; font-size: 15px; line-height: 1.7; resize: none; outline: none; font-family: 'SF Mono', 'Monaco', monospace; }
+        .editor-footer { padding: 8px 24px; border-top: 1px solid #dee2e6; display: flex; justify-content: space-between; color: #adb5bd; font-size: 12px; }
+        
+        /* 主题切换 */
+        .theme-toggle { position: fixed; top: 16px; right: 16px; width: 36px; height: 36px; border: none; border-radius: 50%; background: #f8f9fa; cursor: pointer; font-size: 16px; z-index: 100; }
+        .theme-toggle:hover { background: #4a6cf7; color: white; }
+        
+        /* 暗色主题 */
+        [data-theme="dark"] { background: #1a1a2e; color: #e9ecef; }
+        [data-theme="dark"] .sidebar { background: #16213e; border-color: #2d3748; }
+        [data-theme="dark"] .sidebar-header { border-color: #2d3748; }
+        [data-theme="dark"] .search-box { border-color: #2d3748; }
+        [data-theme="dark"] #searchInput { background: #1a1a2e; color: #e9ecef; border-color: #2d3748; }
+        [data-theme="dark"] .note-item:hover { background: #0f3460; }
+        [data-theme="dark"] .note-preview { color: #adb5bd; }
+        [data-theme="dark"] .note-date { color: #6c757d; }
+        [data-theme="dark"] .editor { background: #1a1a2e; }
+        [data-theme="dark"] .editor-header { border-color: #2d3748; }
+        [data-theme="dark"] #noteTitle { background: #16213e; color: #e9ecef; border-color: #2d3748; }
+        [data-theme="dark"] .editor-actions button { background: #16213e; color: #e9ecef; border-color: #2d3748; }
+        [data-theme="dark"] #noteContent { background: #1a1a2e; color: #e9ecef; }
+        [data-theme="dark"] .editor-footer { border-color: #2d3748; color: #6c757d; }
+        [data-theme="dark"] .theme-toggle { background: #16213e; color: #e9ecef; }
+    </style>
 </head>
 <body>
     <div class="app">
-        <!-- 主题切换 -->
-        <button class="theme-toggle" id="themeToggle" title="切换主题">☀️</button>
+        <button class="theme-toggle" id="themeToggle">☀️</button>
         
-        <!-- 侧边栏 -->
         <aside class="sidebar">
             <div class="sidebar-header">
                 <h1>📝 酷软笔记</h1>
-                <button id="newNote" title="新建笔记">+</button>
+                <button id="newNote">+</button>
             </div>
             <div class="search-box">
                 <input type="text" id="searchInput" placeholder="搜索笔记...">
             </div>
-            <div class="filter-tabs">
-                <button class="tab active" data-filter="all">全部</button>
-                <button class="tab" data-filter="starred">⭐ 收藏</button>
-                <button class="tab" data-filter="trash">🗑️ 回收站</button>
-            </div>
             <div id="noteList" class="note-list"></div>
         </aside>
 
-        <!-- 主编辑区 -->
         <main class="editor">
             <div class="editor-header">
                 <input type="text" id="noteTitle" placeholder="笔记标题">
                 <div class="editor-actions">
                     <button id="saveNote" title="保存">💾</button>
-                    <button id="togglePreview" title="预览">👁️</button>
-                    <button id="toggleStar" title="收藏">☆</button>
                     <button id="deleteNote" title="删除">🗑️</button>
                     <button id="exportNote" title="导出">📤</button>
-                    <button id="importNote" title="导入">📥</button>
-                    <button id="printNote" title="打印">🖨️</button>
-                    <button id="shareNote" title="分享">🔗</button>
                 </div>
             </div>
-            
-            <!-- 编辑工具栏 -->
-            <div class="editor-toolbar">
-                <button class="toolbar-btn" data-command="bold" title="粗体"><b>B</b></button>
-                <button class="toolbar-btn" data-command="italic" title="斜体"><i>I</i></button>
-                <button class="toolbar-btn" data-command="underline" title="下划线"><u>U</u></button>
-                <button class="toolbar-btn" data-command="strikethrough" title="删除线"><s>S</s></button>
-                <span class="toolbar-divider"></span>
-                <button class="toolbar-btn" data-command="h1" title="标题1">H1</button>
-                <button class="toolbar-btn" data-command="h2" title="标题2">H2</button>
-                <button class="toolbar-btn" data-command="h3" title="标题3">H3</button>
-                <span class="toolbar-divider"></span>
-                <button class="toolbar-btn" data-command="ul" title="无序列表">•</button>
-                <button class="toolbar-btn" data-command="ol" title="有序列表">1.</button>
-                <button class="toolbar-btn" data-command="check" title="任务列表">☑</button>
-                <span class="toolbar-divider"></span>
-                <button class="toolbar-btn" data-command="code" title="代码块">{ }</button>
-                <button class="toolbar-btn" data-command="quote" title="引用">"</button>
-                <button class="toolbar-btn" data-command="link" title="链接">🔗</button>
-                <button class="toolbar-btn" data-command="image" title="图片">🖼️</button>
-                <button class="toolbar-btn" data-command="table" title="表格">▦</button>
-                <button class="toolbar-btn" data-command="hr" title="分割线">—</button>
-            </div>
-            
             <div class="editor-body">
                 <textarea id="noteContent" placeholder="开始写作..."></textarea>
-                <div id="preview" class="preview hidden"></div>
             </div>
             <div class="editor-footer">
                 <span id="lastSaved">未保存</span>
                 <span id="wordCount">0 字</span>
-                <span id="noteTags" class="note-tags"></span>
             </div>
         </main>
     </div>
 
-    <script src="js/markdown.js?v=6.0"></script>
-    <script src="js/storage.js?v=6.0"></script>
-    <script src="js/app.js?v=6.0"></script>
     <script>
-        // 先卸载旧的 Service Worker，避免缓存问题
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(function(registrations) {
-                for (let registration of registrations) {
-                    registration.unregister();
+        // ============ 存储层 ============
+        const STORAGE_KEY = 'coolsoft-notes-v3';
+        
+        function getNotes() {
+            try {
+                const data = localStorage.getItem(STORAGE_KEY);
+                return data ? JSON.parse(data) : [];
+            } catch (e) {
+                console.error('getNotes error:', e);
+                return [];
+            }
+        }
+        
+        function saveNotes(notes) {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
+            } catch (e) {
+                console.error('saveNotes error:', e);
+            }
+        }
+        
+        // ============ 应用状态 ============
+        let currentNote = null;
+        let autoSaveTimer = null;
+        
+        // ============ 初始化 ============
+        function init() {
+            console.log('=== init ===');
+            bindEvents();
+            renderNoteList();
+            createWelcomeNote();
+            console.log('=== init done ===');
+        }
+        
+        // ============ 事件绑定 ============
+        function bindEvents() {
+            console.log('=== bindEvents ===');
+            
+            // 主题切换
+            document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+            
+            // 新建笔记
+            document.getElementById('newNote').addEventListener('click', createNewNote);
+            
+            // 搜索
+            document.getElementById('searchInput').addEventListener('input', function(e) {
+                renderNoteList(e.target.value);
+            });
+            
+            // 编辑器事件
+            document.getElementById('noteTitle').addEventListener('input', autoSave);
+            document.getElementById('noteContent').addEventListener('input', function() {
+                autoSave();
+                updateWordCount();
+            });
+            
+            // 操作按钮
+            document.getElementById('saveNote').addEventListener('click', saveCurrentNote);
+            document.getElementById('deleteNote').addEventListener('click', deleteNote);
+            document.getElementById('exportNote').addEventListener('click', exportNote);
+            
+            // 快捷键
+            document.addEventListener('keydown', function(e) {
+                if (e.ctrlKey || e.metaKey) {
+                    if (e.key === 's') {
+                        e.preventDefault();
+                        saveCurrentNote();
+                    } else if (e.key === 'n') {
+                        e.preventDefault();
+                        createNewNote();
+                    }
+                }
+            });
+            
+            // 页面卸载前保存
+            window.addEventListener('beforeunload', function() {
+                if (currentNote) {
+                    saveCurrentNote();
                 }
             });
         }
+        
+        // ============ 主题切换 ============
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+            document.getElementById('themeToggle').textContent = next === 'dark' ? '🌙' : '☀️';
+        }
+        
+        // 加载主题
+        (function() {
+            const theme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', theme);
+            document.getElementById('themeToggle').textContent = theme === 'dark' ? '🌙' : '☀️';
+        })();
+        
+        // ============ 笔记操作 ============
+        function generateId() {
+            return Date.now().toString(36) + Math.random().toString(36).substr(2);
+        }
+        
+        function createWelcomeNote() {
+            const notes = getNotes();
+            if (notes.length === 0) {
+                const welcomeNote = {
+                    id: generateId(),
+                    title: '👋 欢迎使用酷软笔记',
+                    content: '# 欢迎使用酷软笔记\n\n这是一个纯前端的笔记应用，数据保存在本地。\n\n## 功能\n- ✅ Markdown 编辑\n- ✅ 实时保存\n- ✅ 本地存储\n- ✅ 搜索功能\n- ✅ 导出功能\n\n## 快捷键\n| 快捷键 | 功能 |\n|--------|------|\n| Ctrl + S | 保存 |\n| Ctrl + N | 新建 |\n\n开始写作吧！📝',
+                    starred: false,
+                    deleted: false,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                };
+                notes.push(welcomeNote);
+                saveNotes(notes);
+                console.log('welcome note created:', welcomeNote.id);
+                renderNoteList();
+            }
+        }
+        
+        function createNewNote() {
+            console.log('=== createNewNote ===');
+            // 先保存当前笔记
+            if (currentNote) {
+                saveCurrentNote();
+            }
+            
+            const note = {
+                id: generateId(),
+                title: '',
+                content: '',
+                starred: false,
+                deleted: false,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+            
+            const notes = getNotes();
+            notes.push(note);
+            saveNotes(notes);
+            
+            currentNote = note;
+            console.log('new note created:', note.id);
+            renderEditor();
+            renderNoteList();
+            document.getElementById('noteTitle').focus();
+        }
+        
+        function loadNote(id) {
+            console.log('=== loadNote ===', id);
+            // 先保存当前笔记
+            if (currentNote) {
+                saveCurrentNote();
+            }
+            
+            const notes = getNotes();
+            const note = notes.find(n => n.id === id);
+            if (note) {
+                currentNote = note;
+                console.log('note loaded:', note.id);
+                renderEditor();
+                renderNoteList();
+            }
+        }
+        
+        function renderEditor() {
+            console.log('=== renderEditor ===');
+            if (!currentNote) {
+                console.log('no currentNote');
+                return;
+            }
+            document.getElementById('noteTitle').value = currentNote.title;
+            document.getElementById('noteContent').value = currentNote.content;
+            updateWordCount();
+            updateLastSaved();
+        }
+        
+        function autoSave() {
+            if (autoSaveTimer) clearTimeout(autoSaveTimer);
+            autoSaveTimer = setTimeout(function() {
+                console.log('autoSave timer fired');
+                saveCurrentNote();
+            }, 500);
+        }
+        
+        function saveCurrentNote() {
+            console.log('=== saveCurrentNote ===');
+            if (!currentNote) {
+                console.log('no currentNote to save');
+                return;
+            }
+            
+            currentNote.title = document.getElementById('noteTitle').value;
+            currentNote.content = document.getElementById('noteContent').value;
+            currentNote.updatedAt = new Date().toISOString();
+            
+            console.log('saving note:', currentNote.id, 'title:', currentNote.title);
+            
+            const notes = getNotes();
+            const index = notes.findIndex(n => n.id === currentNote.id);
+            if (index !== -1) {
+                notes[index] = currentNote;
+                saveNotes(notes);
+                console.log('note saved');
+            }
+            
+            updateLastSaved();
+            renderNoteList();
+        }
+        
+        function updateLastSaved() {
+            const now = new Date();
+            document.getElementById('lastSaved').textContent = '已保存 ' + now.toLocaleTimeString('zh-CN');
+        }
+        
+        function updateWordCount() {
+            const content = document.getElementById('noteContent').value;
+            const count = content.length;
+            document.getElementById('wordCount').textContent = count + ' 字';
+        }
+        
+        function deleteNote() {
+            if (!currentNote) return;
+            if (confirm('确定要删除这篇笔记吗？')) {
+                const notes = getNotes();
+                const filtered = notes.filter(n => n.id !== currentNote.id);
+                saveNotes(filtered);
+                currentNote = null;
+                renderEditor();
+                renderNoteList();
+            }
+        }
+        
+        function exportNote() {
+            if (!currentNote) return;
+            const blob = new Blob([currentNote.content], { type: 'text/markdown' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = (currentNote.title || 'untitled') + '.md';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        // ============ 渲染笔记列表 ============
+        function renderNoteList(searchQuery) {
+            console.log('=== renderNoteList ===');
+            let notes = getNotes();
+            notes = notes.filter(n => !n.deleted);
+            
+            if (searchQuery) {
+                const lower = searchQuery.toLowerCase();
+                notes = notes.filter(n => 
+                    n.title.toLowerCase().includes(lower) || 
+                    n.content.toLowerCase().includes(lower)
+                );
+            }
+            
+            notes.sort(function(a, b) {
+                return new Date(b.updatedAt) - new Date(a.updatedAt);
+            });
+            
+            console.log('notes count:', notes.length);
+            
+            const listEl = document.getElementById('noteList');
+            listEl.innerHTML = notes.map(function(note) {
+                const preview = note.content.replace(/[#*`\[\]()]|</g, '').substring(0, 50);
+                const date = new Date(note.updatedAt).toLocaleDateString('zh-CN');
+                const active = currentNote && currentNote.id === note.id ? 'active' : '';
+                return '<div class="note-item ' + active + '" onclick="loadNote(\'' + note.id + '\')">' +
+                    '<div class="note-title">' + (note.title || '无标题') + '</div>' +
+                    '<div class="note-preview">' + (preview || '空笔记') + '</div>' +
+                    '<div class="note-date">' + date + '</div>' +
+                    '</div>';
+            }).join('');
+            
+            console.log('renderNoteList done, rendered:', notes.length, 'items');
+        }
+        
+        // ============ 启动 ============
+        init();
     </script>
 </body>
 </html>
