@@ -1,82 +1,60 @@
-// IndexedDB 封装
+// 存储封装 - 使用 localStorage（更可靠）
 class NoteStorage {
-    constructor(dbName = 'coolsoft-notes', version = 1) {
-        this.dbName = dbName;
-        this.version = version;
-        this.db = null;
+    constructor() {
+        this.KEY = 'coolsoft-notes-v2';
     }
 
     async init() {
-        return new Promise((resolve, reject) => {
-            const request = indexedDB.open(this.dbName, this.version);
-            
-            request.onerror = () => reject(request.error);
-            request.onsuccess = () => {
-                this.db = request.result;
-                resolve(this.db);
-            };
-            
-            request.onupgradeneeded = (event) => {
-                const db = event.target.result;
-                if (!db.objectStoreNames.contains('notes')) {
-                    const store = db.createObjectStore('notes', { keyPath: 'id' });
-                    store.createIndex('updatedAt', 'updatedAt', { unique: false });
-                    store.createIndex('starred', 'starred', { unique: false });
-                    store.createIndex('deleted', 'deleted', { unique: false });
-                }
-            };
-        });
+        // localStorage 不需要初始化
+        return Promise.resolve();
     }
 
     async add(note) {
-        return this._transaction('notes', 'readwrite', store => {
-            return store.add(note);
-        });
+        const notes = this.getAll();
+        notes.push(note);
+        this.saveAll(notes);
+        return note;
     }
 
     async get(id) {
-        return this._transaction('notes', 'readonly', store => {
-            return store.get(id);
-        });
+        const notes = this.getAll();
+        return notes.find(n => n.id === id) || null;
     }
 
     async update(note) {
-        return this._transaction('notes', 'readwrite', store => {
-            return store.put(note);
-        });
+        const notes = this.getAll();
+        const index = notes.findIndex(n => n.id === note.id);
+        if (index !== -1) {
+            notes[index] = note;
+            this.saveAll(notes);
+        }
+        return note;
     }
 
     async delete(id) {
-        return this._transaction('notes', 'readwrite', store => {
-            return store.delete(id);
-        });
+        const notes = this.getAll();
+        const filtered = notes.filter(n => n.id !== id);
+        this.saveAll(filtered);
     }
 
     async getAll() {
-        return this._transaction('notes', 'readonly', store => {
-            return store.getAll();
-        });
+        const data = localStorage.getItem(this.KEY);
+        return data ? JSON.parse(data) : [];
     }
 
     async getActive() {
-        return this._transaction('notes', 'readonly', store => {
-            const index = store.index('deleted');
-            return index.getAll(IDBKeyRange.only(false));
-        });
+        const notes = this.getAll();
+        return notes.filter(n => !n.deleted);
     }
 
     async getStarred() {
-        return this._transaction('notes', 'readonly', store => {
-            const index = store.index('starred');
-            return index.getAll(IDBKeyRange.only(true));
-        });
+        const notes = this.getAll();
+        return notes.filter(n => n.starred && !n.deleted);
     }
 
     async getDeleted() {
-        return this._transaction('notes', 'readonly', store => {
-            const index = store.index('deleted');
-            return index.getAll(IDBKeyRange.only(true));
-        });
+        const notes = this.getAll();
+        return notes.filter(n => n.deleted);
     }
 
     async search(keyword) {
@@ -89,40 +67,10 @@ class NoteStorage {
         );
     }
 
-    async exportAll() {
-        const notes = await this.getActive();
-        const data = {
-            version: '1.0',
-            exportedAt: new Date().toISOString(),
-            notes: notes
-        };
-        return JSON.stringify(data, null, 2);
-    }
-
-    async importData(jsonString) {
-        const data = JSON.parse(jsonString);
-        if (!data.notes || !Array.isArray(data.notes)) {
-            throw new Error('Invalid import data');
-        }
-        for (const note of data.notes) {
-            await this.update(note);
-        }
-        return data.notes.length;
-    }
-
-    _transaction(storeName, mode, callback) {
-        return new Promise((resolve, reject) => {
-            const transaction = this.db.transaction([storeName], mode);
-            const store = transaction.objectStore(storeName);
-            const request = callback(store);
-            
-            // 正确处理 IndexedDB request 的异步结果
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = () => reject(request.error);
-        });
+    saveAll(notes) {
+        localStorage.setItem(this.KEY, JSON.stringify(notes));
     }
 }
 
 // 导出全局实例
-window.NoteStorage = NoteStorage;
 window.storage = new NoteStorage();
