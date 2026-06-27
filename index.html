@@ -317,6 +317,12 @@
         [data-theme="dark"] .export-modal .export-cancel { color: #adb5bd; }
         [data-theme="dark"] .export-modal .export-cancel:hover { color: #e9ecef; }
 
+        /* 登录弹窗输入框暗色主题 */
+        [data-theme="dark"] .export-modal input[type="email"],
+        [data-theme="dark"] .export-modal input[type="password"] {
+            background: #16213e; color: #e9ecef; border-color: #2d3748;
+        }
+
         /* 暗色主题 */
         [data-theme="dark"] { background: #1a1a2e; color: #e9ecef; }
         [data-theme="dark"] .sidebar { background: #16213e; border-color: #2d3748; }
@@ -625,15 +631,22 @@
                 .subscribe();
         }
 
-        async function loginWithSupabase() {
+        async function loginWithEmail(email, password) {
             try {
-                const { data, error } = await supabase.auth.signInWithOAuth({
-                    provider: 'google',
-                    options: { redirectTo: window.location.origin }
-                });
+                const { data, error } = await supabase.auth.signInWithPassword({ email, password });
                 if (error) throw error;
             } catch (err) {
                 alert('登录失败: ' + err.message);
+            }
+        }
+
+        async function registerWithEmail(email, password) {
+            try {
+                const { data, error } = await supabase.auth.signUp({ email, password });
+                if (error) throw error;
+                alert('注册成功，请登录');
+            } catch (err) {
+                alert('注册失败: ' + err.message);
             }
         }
 
@@ -648,13 +661,45 @@
             if (!loginBtn) return;
             if (supabaseUser) {
                 if (supabaseUser.is_anonymous) {
-                    loginBtn.innerHTML = '<button onclick="loginWithSupabase()" style="font-size:12px;color:#4a6cf7;background:none;border:1px solid #4a6cf7;border-radius:4px;padding:4px 10px;cursor:pointer">🔑 登录以同步</button>';
+                    loginBtn.innerHTML = '<button onclick="showLoginModal()" style="font-size:12px;color:#4a6cf7;background:none;border:1px solid #4a6cf7;border-radius:4px;padding:4px 10px;cursor:pointer">🔑 登录以同步</button>';
                 } else {
                     loginBtn.innerHTML = '<span style="font-size:12px;color:#4a6cf7">✓ 已同步 (' + (supabaseUser.email || 'Google') + ')</span>';
                 }
             } else {
                 loginBtn.innerHTML = '<span style="font-size:12px;color:#6c757d">⏳ 连接中...</span>';
             }
+        }
+
+        // ============ 登录弹窗 ============
+        function showLoginModal() {
+            var modal = document.createElement('div');
+            modal.className = 'export-modal show';
+            modal.innerHTML = '<div class="export-modal-content">' +
+                '<h3>登录 / 注册</h3>' +
+                '<input type="email" id="loginEmail" placeholder="邮箱" style="width:100%;padding:8px 12px;border:1px solid #dee2e6;border-radius:6px;margin-bottom:8px;font-size:14px;outline:none">' +
+                '<input type="password" id="loginPassword" placeholder="密码" style="width:100%;padding:8px 12px;border:1px solid #dee2e6;border-radius:6px;margin-bottom:12px;font-size:14px;outline:none">' +
+                '<button onclick="doLogin()" style="display:block;width:100%;padding:10px;border:none;border-radius:6px;background:#4a6cf7;color:white;font-size:14px;cursor:pointer;margin-bottom:8px">登录</button>' +
+                '<button onclick="doRegister()" style="display:block;width:100%;padding:10px;border:1px solid #dee2e6;border-radius:6px;background:#fff;color:#333;font-size:14px;cursor:pointer;margin-bottom:8px">注册</button>' +
+                '<button class="export-cancel" onclick="this.closest(\'.export-modal\').remove()" style="display:block;width:100%;padding:8px;border:none;background:transparent;color:#6c757d;font-size:12px;cursor:pointer">取消</button>' +
+                '</div>';
+            document.body.appendChild(modal);
+            document.getElementById('loginEmail').focus();
+        }
+
+        function doLogin() {
+            var email = document.getElementById('loginEmail').value;
+            var password = document.getElementById('loginPassword').value;
+            if (!email || !password) { alert('请输入邮箱和密码'); return; }
+            loginWithEmail(email, password);
+            document.querySelector('.export-modal.show').remove();
+        }
+
+        function doRegister() {
+            var email = document.getElementById('loginEmail').value;
+            var password = document.getElementById('loginPassword').value;
+            if (!email || !password) { alert('请输入邮箱和密码'); return; }
+            registerWithEmail(email, password);
+            document.querySelector('.export-modal.show').remove();
         }
 
         // 监听登录状态
