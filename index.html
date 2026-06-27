@@ -503,6 +503,7 @@
                 <button class="toolbar-btn" onclick="insertMarkdown('table')" title="表格">▦</button>
                 <button class="toolbar-btn" onclick="insertMarkdown('hr')" title="分割线">—</button>
                 <button class="toolbar-btn" onclick="insertImage()" title="插入图片">🖼️</button>
+                <button class="toolbar-btn" onclick="clipWebPage()" title="网页剪藏">📋</button>
                 <span class="toolbar-divider"></span>
                 <button class="toolbar-btn" onclick="togglePreview()" id="previewToggle" title="分屏预览">👁️</button>
                 <button class="toolbar-btn" onclick="toggleFindBar()" title="查找替换 Ctrl+F">🔍</button>
@@ -1523,6 +1524,9 @@
                 console.log('Tesseract.js not loaded');
                 return;
             }
+            // 移除旧进度条
+            var oldProgress = document.getElementById('ocr-progress');
+            if (oldProgress) oldProgress.remove();
             // 显示 OCR 进度
             var progressEl = document.createElement('div');
             progressEl.id = 'ocr-progress';
@@ -1551,6 +1555,47 @@
                 progressEl.innerHTML = '<span>❌ OCR 失败</span>';
                 setTimeout(function() { progressEl.remove(); }, 2000);
             });
+        }
+
+        // ============ 网页剪藏 ============
+        function clipWebPage() {
+            var url = prompt('请输入要剪藏的网页链接：');
+            if (!url) return;
+            if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                url = 'https://' + url;
+            }
+            var textarea = document.getElementById('noteContent');
+            var start = textarea.selectionStart;
+            var text = textarea.value;
+
+            // 移除旧进度条
+            var oldProgress = document.getElementById('clip-progress');
+            if (oldProgress) oldProgress.remove();
+
+            // 显示剪藏进度
+            var progressEl = document.createElement('div');
+            progressEl.id = 'clip-progress';
+            progressEl.style.cssText = 'position:fixed;top:20px;right:20px;background:#4a6cf7;color:white;padding:12px 20px;border-radius:8px;font-size:13px;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.15)';
+            progressEl.innerHTML = '<span>📋 剪藏中...</span>';
+            document.body.appendChild(progressEl);
+
+            async function doClip() {
+                try {
+                    var res = await fetch('https://r.jina.ai/' + url);
+                    var content = await res.text();
+                    var insert = '\n---\n📎 **剪藏自：' + url + '**\n\n' + content.substring(0, 5000) + '\n';
+                    var t = textarea.value;
+                    textarea.value = t.substring(0, start) + insert + t.substring(start);
+                    autoSave();
+                    progressEl.innerHTML = '<span>✅ 剪藏完成</span>';
+                    setTimeout(function() { progressEl.remove(); }, 2000);
+                } catch (err) {
+                    console.error('Clip error:', err);
+                    progressEl.innerHTML = '<span>❌ 剪藏失败</span>';
+                    setTimeout(function() { progressEl.remove(); }, 2000);
+                }
+            }
+            doClip();
         }
 
         // ============ 工具函数 ============
@@ -1701,9 +1746,12 @@
                 if (!notes) return m;
                 var target = notes.find(function(n) { return n.title === name && !n.deleted; });
                 if (target) {
-                    return '<a href="#" onclick="loadNote(\'' + target.id + '\');return false;" style="color:#4a6cf7;font-weight:500">📎 ' + name + '</a>';
+                    var safeId = target.id.replace(/'/g, "\\'");
+                    var safeName = name.replace(/'/g, "\\'");
+                    return '<a href="#" onclick="loadNote(\'' + safeId + '\');return false;" style="color:#4a6cf7;font-weight:500">📎 ' + safeName + '</a>';
                 }
-                return '<span style="color:#dc3545;text-decoration:line-through">📎 ' + name + ' (不存在)</span>';
+                var safeName = name.replace(/'/g, "\\'");
+                return '<span style="color:#dc3545;text-decoration:line-through">📎 ' + safeName + ' (不存在)</span>';
             });
 
             // Mermaid 图表
