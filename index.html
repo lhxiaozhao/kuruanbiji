@@ -20,6 +20,8 @@
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
     <!-- Tesseract.js OCR -->
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.0/dist/tesseract.min.js"></script>
+    <!-- D3.js for Knowledge Graph -->
+    <script src="https://cdn.jsdelivr.net/npm/d3@7.8.5/dist/d3.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #fff; color: #333; height: 100vh; overflow: hidden; }
@@ -328,6 +330,23 @@
             background: #16213e; color: #e9ecef; border-color: #2d3748;
         }
 
+        /* 知识图谱 */
+        .graph-modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+        .graph-modal.show { display: flex; }
+        .graph-modal-content { background: #fff; border-radius: 12px; width: 90%; max-width: 900px; height: 80%; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+        .graph-modal-header { padding: 16px 20px; border-bottom: 1px solid #dee2e6; display: flex; justify-content: space-between; align-items: center; }
+        .graph-modal-header h3 { font-size: 16px; font-weight: 600; }
+        .graph-modal-close { width: 32px; height: 32px; border: none; border-radius: 6px; background: transparent; cursor: pointer; font-size: 18px; color: #6c757d; }
+        .graph-modal-close:hover { background: #f8f9fa; color: #333; }
+        .graph-modal-body { flex: 1; position: relative; overflow: hidden; }
+        #graphSvg { width: 100%; height: 100%; display: block; }
+        .graph-tooltip { position: absolute; background: #333; color: #fff; padding: 6px 10px; border-radius: 6px; font-size: 12px; pointer-events: none; opacity: 0; transition: opacity 0.2s; white-space: nowrap; }
+        [data-theme="dark"] .graph-modal-content { background: #1a1a2e; }
+        [data-theme="dark"] .graph-modal-header { border-color: #2d3748; }
+        [data-theme="dark"] .graph-modal-header h3 { color: #e9ecef; }
+        [data-theme="dark"] .graph-modal-close { color: #adb5bd; }
+        [data-theme="dark"] .graph-modal-close:hover { background: #16213e; color: #e9ecef; }
+
         /* 暗色主题 */
         [data-theme="dark"] { background: #1a1a2e; color: #e9ecef; }
         [data-theme="dark"] .sidebar { background: #16213e; border-color: #2d3748; }
@@ -398,6 +417,7 @@
                     <button id="themeToggle" class="theme-toggle" title="切换主题">☀️</button>
                     <button id="importNote" title="导入">📥</button>
                     <button id="templateBtn" title="模板">📋</button>
+                    <button id="graphBtn" title="知识图谱">🕸️</button>
                     <button id="newNote">+</button>
                 </div>
             </div>
@@ -545,6 +565,20 @@
             <button onclick="exportAs('txt')">📝 纯文本 (.txt)</button>
             <button onclick="exportAs('pdf')">📑 PDF</button>
             <button class="export-cancel" onclick="closeExportModal()">取消</button>
+        </div>
+    </div>
+
+    <!-- 知识图谱弹窗 -->
+    <div class="graph-modal" id="graphModal">
+        <div class="graph-modal-content">
+            <div class="graph-modal-header">
+                <h3>🕸️ 知识图谱</h3>
+                <button class="graph-modal-close" onclick="closeGraphModal()">✕</button>
+            </div>
+            <div class="graph-modal-body">
+                <svg id="graphSvg"></svg>
+                <div class="graph-tooltip" id="graphTooltip"></div>
+            </div>
         </div>
     </div>
 
@@ -799,6 +833,7 @@
             document.getElementById('themeToggle').addEventListener('click', toggleTheme);
             document.getElementById('newNote').addEventListener('click', createNewNote);
             document.getElementById('templateBtn').addEventListener('click', showTemplatePicker);
+            document.getElementById('graphBtn').addEventListener('click', openGraphModal);
             document.getElementById('toggleSidebar').addEventListener('click', toggleSidebar);
             document.getElementById('importNote').addEventListener('click', importNote);
             document.getElementById('searchInput').addEventListener('input', function() { renderNoteList(); });
@@ -1430,6 +1465,176 @@
 
         function closeExportModal() {
             document.getElementById('exportModal').classList.remove('show');
+        }
+
+        // ============ 知识图谱 ============
+        function openGraphModal() {
+            document.getElementById('graphModal').classList.add('show');
+            renderKnowledgeGraph();
+        }
+
+        function closeGraphModal() {
+            document.getElementById('graphModal').classList.remove('show');
+            // 清理 D3 实例
+            var svg = d3.select('#graphSvg');
+            svg.selectAll('*').remove();
+        }
+
+        function renderKnowledgeGraph() {
+            var svg = d3.select('#graphSvg');
+            svg.selectAll('*').remove();
+
+            var notes = getNotes();
+            if (notes.length === 0) {
+                var svgEl = document.getElementById('graphSvg');
+                svgEl.innerHTML = '<text x="50%" y="50%" text-anchor="middle" fill="#6c757d" font-size="14">暂无笔记</text>';
+                return;
+            }
+
+            // 提取节点和边
+            var nodes = [];
+            var links = [];
+            var nodeMap = {};
+
+            notes.forEach(function(note) {
+                if (note.deleted) return;
+                nodeMap[note.id] = { id: note.id, name: note.title || '无标题', tags: note.tags || [] };
+                nodes.push(nodeMap[note.id]);
+
+                // 提取 [[笔记名]] 链接
+                var matches = note.content.match(/\[\[([^\]]+)\]\]/g) || [];
+                matches.forEach(function(match) {
+                    var targetName = match.slice(2, -2);
+                    var targetNote = notes.find(function(n) { return n.title === targetName && !n.deleted; });
+                    if (targetNote && targetNote.id !== note.id) {
+                        links.push({ source: note.id, target: targetNote.id });
+                    }
+                });
+            });
+
+            // 去重边
+            var linkSet = new Set();
+            links = links.filter(function(link) {
+                var key = Math.min(link.source, link.target) + '-' + Math.max(link.source, link.target);
+                if (linkSet.has(key)) return false;
+                linkSet.add(key);
+                return true;
+            });
+
+            var svgEl = document.getElementById('graphSvg');
+            var width = svgEl.clientWidth;
+            var height = svgEl.clientHeight;
+
+            svg = d3.select('#graphSvg')
+                .attr('width', width)
+                .attr('height', height);
+
+            // 力导向模拟
+            var simulation = d3.forceSimulation(nodes)
+                .force('link', d3.forceLink(links).id(function(d) { return d.id; }).distance(100))
+                .force('charge', d3.forceManyBody().strength(-300))
+                .force('center', d3.forceCenter(width / 2, height / 2))
+                .force('collide', d3.forceCollide().radius(40));
+
+            // 绘制边
+            var link = svg.append('g')
+                .selectAll('line')
+                .data(links)
+                .enter().append('line')
+                .attr('stroke', '#dee2e6')
+                .attr('stroke-width', 1.5);
+
+            // 绘制节点
+            var node = svg.append('g')
+                .selectAll('circle')
+                .data(nodes)
+                .enter().append('circle')
+                .attr('r', 20)
+                .attr('fill', function(d) {
+                    var colors = ['#4a6cf7', '#28a745', '#fd7e14', '#6f42c1', '#e83e8c', '#20c997'];
+                    return colors[Math.abs(hashCode(d.id)) % colors.length];
+                })
+                .attr('stroke', '#fff')
+                .attr('stroke-width', 2)
+                .call(d3.drag()
+                    .on('start', dragStarted)
+                    .on('drag', dragged)
+                    .on('end', dragEnded));
+
+            // 节点标签
+            var label = svg.append('g')
+                .selectAll('text')
+                .data(nodes)
+                .enter().append('text')
+                .attr('text-anchor', 'middle')
+                .attr('dy', 35)
+                .attr('font-size', 11)
+                .attr('fill', '#6c757d')
+                .text(function(d) { return d.name.length > 8 ? d.name.substring(0, 7) + '...' : d.name; });
+
+            // 节点点击事件
+            node.on('click', function(event, d) {
+                closeGraphModal();
+                loadNote(d.id);
+            });
+
+            // 节点悬停提示
+            var tooltip = document.getElementById('graphTooltip');
+            node.on('mouseover', function(event, d) {
+                tooltip.textContent = d.name;
+                tooltip.style.opacity = 1;
+            });
+            node.on('mousemove', function(event) {
+                var bodyRect = document.querySelector('.graph-modal-body').getBoundingClientRect();
+                tooltip.style.left = (event.clientX - bodyRect.left + 10) + 'px';
+                tooltip.style.top = (event.clientY - bodyRect.top + 10) + 'px';
+            });
+            node.on('mouseout', function() {
+                tooltip.style.opacity = 0;
+            });
+
+            // 拖拽函数
+            function dragStarted(event, d) {
+                if (!event.active) simulation.alphaTarget(0.3).restart();
+                d.fx = d.x;
+                d.fy = d.y;
+            }
+            function dragged(event, d) {
+                d.fx = event.x;
+                d.fy = event.y;
+            }
+            function dragEnded(event, d) {
+                if (!event.active) simulation.alphaTarget(0);
+                d.fx = null;
+                d.fy = null;
+            }
+
+            // 模拟更新
+            simulation.on('tick', function() {
+                link
+                    .attr('x1', function(d) { return d.source.x; })
+                    .attr('y1', function(d) { return d.source.y; })
+                    .attr('x2', function(d) { return d.target.x; })
+                    .attr('y2', function(d) { return d.target.y; });
+
+                node
+                    .attr('cx', function(d) { return d.x; })
+                    .attr('cy', function(d) { return d.y; });
+
+                label
+                    .attr('x', function(d) { return d.x; })
+                    .attr('y', function(d) { return d.y; });
+            });
+
+            // 哈希函数
+            function hashCode(str) {
+                var hash = 0;
+                for (var i = 0; i < str.length; i++) {
+                    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+                    hash |= 0;
+                }
+                return hash;
+            }
         }
 
         function exportAs(format) {
