@@ -583,6 +583,8 @@
             <button onclick="exportAs('pdf')">📑 PDF</button>
             <button onclick="shareNote()">🔗 分享链接</button>
             <button onclick="exportAs('wechat')">📱 公众号文章</button>
+            <button onclick="exportAllNotes()">💾 批量导出 (.json)</button>
+            <button onclick="importFromJson()">📥 从备份导入</button>
             <button class="export-cancel" onclick="closeExportModal()">取消</button>
         </div>
     </div>
@@ -1588,27 +1590,125 @@
         function importNote() {
             var input = document.createElement('input');
             input.type = 'file';
-            input.accept = '.md,.markdown,.txt';
+            input.accept = '.md,.markdown,.txt,.json';
+            input.multiple = true;
+            input.onchange = function(e) {
+                var files = e.target.files;
+                if (!files || files.length === 0) return;
+                var count = 0;
+                var imported = 0;
+                Array.from(files).forEach(function(file) {
+                    count++;
+                    var reader = new FileReader();
+                    reader.onload = function() {
+                        var text = reader.result;
+                        var title = file.name.replace(/\.[^/.]+$/, '');
+                        // 如果文件内容第一行是 # 标题，提取为标题
+                        var firstLine = text.split('\n')[0];
+                        if (firstLine && firstLine.startsWith('# ')) {
+                            title = firstLine.substring(2).trim();
+                            text = text.substring(firstLine.length).trim();
+                        }
+                        var note = {
+                            id: generateId(),
+                            title: title,
+                            content: text,
+                            starred: false,
+                            deleted: false,
+                            pinned: false,
+                            locked: false,
+                            lockPassword: '',
+                            category: '',
+                            tags: [],
+                            folder: '',
+                            versions: [],
+                            comments: [],
+                            createdAt: new Date().toISOString(),
+                            updatedAt: new Date().toISOString()
+                        };
+                        var notes = getNotes();
+                        notes.push(note);
+                        saveNotes(notes);
+                        imported++;
+                        if (imported === count) {
+                            renderNoteList();
+                            alert('成功导入 ' + imported + ' 篇笔记');
+                        }
+                    };
+                    reader.readAsText(file);
+                });
+            };
+            input.click();
+        }
+
+        // ============ 批量导出 ============
+        function exportAllNotes() {
+            var notes = getNotes();
+            notes = notes.filter(function(n) { return !n.deleted; });
+            if (notes.length === 0) {
+                alert('没有可导出的笔记');
+                return;
+            }
+            // 导出为 JSON 文件
+            var json = JSON.stringify(notes, null, 2);
+            var blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = '酷软笔记备份_' + new Date().toISOString().slice(0, 10) + '.json';
+            a.click();
+            URL.revokeObjectURL(url);
+            closeExportModal();
+        }
+
+        function importFromJson() {
+            var input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
             input.onchange = function(e) {
                 var file = e.target.files[0];
                 if (!file) return;
                 var reader = new FileReader();
                 reader.onload = function() {
-                    var text = reader.result;
-                    var title = file.name.replace(/\.[^/.]+$/, '');
-                    // 如果文件内容第一行是 # 标题，提取为标题
-                    var firstLine = text.split('\n')[0];
-                    if (firstLine && firstLine.startsWith('# ')) {
-                        title = firstLine.substring(2).trim();
-                        text = text.substring(firstLine.length).trim();
+                    try {
+                        var notes = JSON.parse(reader.result);
+                        if (!Array.isArray(notes)) throw new Error('Invalid format');
+                        var existingIds = {};
+                        var currentNotes = getNotes();
+                        currentNotes.forEach(function(n) { existingIds[n.id] = true; });
+                        var imported = 0;
+                        notes.forEach(function(note) {
+                            // 跳过已存在的笔记
+                            if (existingIds[note.id]) return;
+                            // 确保所有字段存在
+                            var newNote = {
+                                id: note.id || generateId(),
+                                title: note.title || '',
+                                content: note.content || '',
+                                starred: note.starred || false,
+                                deleted: note.deleted || false,
+                                pinned: note.pinned || false,
+                                locked: note.locked || false,
+                                lockPassword: note.lockPassword || '',
+                                category: note.category || '',
+                                tags: note.tags || [],
+                                folder: note.folder || '',
+                                versions: note.versions || [],
+                                comments: note.comments || [],
+                                createdAt: note.createdAt || new Date().toISOString(),
+                                updatedAt: note.updatedAt || new Date().toISOString()
+                            };
+                            var allNotes = getNotes();
+                            allNotes.push(newNote);
+                            saveNotes(allNotes);
+                            existingIds[newNote.id] = true;
+                            imported++;
+                        });
+                        renderNoteList();
+                        alert('成功导入 ' + imported + ' 篇笔记');
+                    } catch (err) {
+                        alert('导入失败：文件格式错误');
                     }
-                    var note = { id: generateId(), title: title, content: text, starred: false, deleted: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
-                    var notes = getNotes();
-                    notes.push(note);
-                    saveNotes(notes);
-                    currentNote = note;
-                    renderEditor();
-                    renderNoteList();
                 };
                 reader.readAsText(file);
             };
