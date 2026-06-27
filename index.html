@@ -1148,6 +1148,7 @@
                 currentNote.content = document.getElementById('noteContent').value;
             }
             currentNote.category = document.getElementById('noteCategory').value;
+            currentNote.folder = document.getElementById('noteFolder').value;
             currentNote.updatedAt = new Date().toISOString();
             const notes = getNotes();
             const index = notes.findIndex(function(n) { return n.id === currentNote.id; });
@@ -1846,8 +1847,6 @@
                 notes = notes.filter(function(n) {
                     return extractTags(n.content).indexOf(tagFilter) !== -1;
                 });
-                // 清除标签筛选
-                setTagFilter('');
             }
 
             if (keyword) {
@@ -1927,7 +1926,7 @@
             cloud.style.display = 'block';
             cloud.innerHTML = '<span style="color:#6c757d;margin-right:4px">标签:</span>' +
                 tags.map(function(t) {
-                    return '<span onclick="setTagFilter(\'' + t + '\');renderNoteList();" style="cursor:pointer;color:#4a6cf7;margin-right:8px">#' + t + ' (' + tagMap[t] + ')</span>';
+                    return '<span onclick="setTagFilter(\'' + escapeHtml(t) + '\');renderNoteList();" style="cursor:pointer;color:#4a6cf7;margin-right:8px">#' + escapeHtml(t) + ' (' + tagMap[t] + ')</span>';
                 }).join('');
         }
 
@@ -1946,7 +1945,7 @@
             folders.forEach(function(f) {
                 var count = getNotes().filter(function(n) { return !n.deleted && n.folder === f; }).length;
                 var isActive = f === current;
-                html += '<span onclick="setFolderFilter(\'' + f + '\');renderNoteList();" style="cursor:pointer;color:' + (isActive ? '#4a6cf7' : '#6c757d') + ';margin-right:8px;font-weight:' + (isActive ? 'bold' : 'normal') + '">📁 ' + f + ' (' + count + ')</span>';
+                html += '<span onclick="setFolderFilter(\'' + escapeHtml(f) + '\');renderNoteList();" style="cursor:pointer;color:' + (isActive ? '#4a6cf7' : '#6c757d') + ';margin-right:8px;font-weight:' + (isActive ? 'bold' : 'normal') + '">📁 ' + escapeHtml(f) + ' (' + count + ')</span>';
             });
             tree.innerHTML = html;
         }
