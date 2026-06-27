@@ -11,6 +11,15 @@
     <script src="https://cdn.jsdelivr.net/npm/firebase@10.7.0/firebase-app-compat.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/firebase@10.7.0/firebase-auth-compat.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/firebase@10.7.0/firebase-database-compat.min.js"></script>
+    <!-- Syntax Highlighting -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/highlight.min.js"></script>
+    <!-- Mermaid -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+    <!-- KaTeX -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #fff; color: #333; height: 100vh; overflow: hidden; }
@@ -184,6 +193,12 @@
         #preview code { background: #f0f0f0; padding: 2px 6px; border-radius: 4px; font-size: 13px; font-family: 'SF Mono', 'Monaco', monospace; }
         #preview pre { background: #f0f0f0; padding: 16px; border-radius: 6px; overflow-x: auto; }
         #preview pre code { background: transparent; padding: 0; border-radius: 0; }
+        #preview pre code.hljs { background: transparent; padding: 0; border-radius: 0; }
+        /* Mermaid */
+        #preview .mermaid { background: #fff; padding: 16px; border-radius: 6px; margin: 16px 0; text-align: center; }
+        /* KaTeX */
+        #preview .katex-display { margin: 16px 0; text-align: center; }
+        #preview .katex { font-size: 1.1em; }
         #preview blockquote { border-left: 3px solid #4a6cf7; padding-left: 16px; color: #6c757d; margin: 10px 0; }
         #preview table { width: 100%; border-collapse: collapse; margin: 10px 0; }
         #preview th, #preview td { border: 1px solid #dee2e6; padding: 8px 12px; text-align: left; }
@@ -337,6 +352,10 @@
         [data-theme="dark"] #installBtn { background: #16213e; color: #adb5bd; border-color: #2d3748; }
         [data-theme="dark"] #installBtn:hover { background: #4a6cf7; color: white; border-color: #4a6cf7; }
         [data-theme="dark"] .theme-toggle { background: #16213e; color: #e9ecef; }
+
+        /* 暗色主题 - 代码高亮 */
+        [data-theme="dark"] #preview pre code.hljs { background: #16213e; }
+        [data-theme="dark"] #preview .mermaid { background: #16213e; }
 
         /* 空状态 */
         .empty-state { text-align: center; padding: 40px 20px; color: #adb5bd; font-size: 14px; }
@@ -587,7 +606,11 @@
             var loginBtn = document.getElementById('loginBtn');
             if (!loginBtn) return;
             if (firebaseUser) {
-                loginBtn.innerHTML = '<span style="font-size:12px">🔗 已同步 (匿名用户)</span>';
+                if (firebaseUser.isAnonymous) {
+                    loginBtn.innerHTML = '<button onclick="loginWithGoogle()" style="font-size:12px;color:#4a6cf7;background:none;border:1px solid #4a6cf7;border-radius:4px;padding:4px 10px;cursor:pointer">🔑 登录以同步</button>';
+                } else {
+                    loginBtn.innerHTML = '<span style="font-size:12px;color:#4a6cf7">✓ 已同步 (' + (firebaseUser.displayName || firebaseUser.email || 'Google') + ')</span>';
+                }
             } else {
                 loginBtn.innerHTML = '<span style="font-size:12px;color:#6c757d">⏳ 连接中...</span>';
             }
@@ -738,6 +761,8 @@
             document.documentElement.setAttribute('data-theme', next);
             localStorage.setItem('theme', next);
             document.getElementById('themeToggle').textContent = next === 'dark' ? '🌙' : '☀️';
+            // 同步更新 Mermaid 主题
+            updateMermaidTheme(next);
             // 主题切换时更新预览区
             var preview = document.getElementById('preview');
         }
@@ -939,6 +964,10 @@
             var preview = document.getElementById('preview');
             if (!preview.classList.contains('hidden')) {
                 preview.innerHTML = currentNote.locked ? '<p style="color:#dc3545;text-align:center;padding:40px">🔒 笔记已锁定</p>' : parseMarkdown(currentNote.content, getNotes());
+                // 应用增强渲染
+                applySyntaxHighlighting();
+                applyMermaid();
+                applyKaTeX();
             }
         }
 
@@ -1120,14 +1149,18 @@
             input.click();
         }
 
-        function printNote() {
+        async function printNote() {
             if (!currentNote) return;
             var preview = document.getElementById('preview');
             var content = document.getElementById('noteContent');
             preview.innerHTML = '<h1>' + escapeHtml(currentNote.title) + '</h1>' + parseMarkdown(currentNote.content, getNotes());
             preview.classList.remove('hidden');
             content.classList.add('hidden');
-            setTimeout(function() { window.print(); }, 100);
+            // 应用增强渲染
+            applySyntaxHighlighting();
+            await applyMermaid();
+            applyKaTeX();
+            setTimeout(function() { window.print(); }, 200);
         }
 
         // ============ 查找替换 ============
@@ -1453,6 +1486,10 @@
                     preview.innerHTML = '<p style="color:#dc3545;text-align:center;padding:40px">🔒 笔记已锁定</p>';
                 } else {
                     preview.innerHTML = '<h1>' + escapeHtml(currentNote.title) + '</h1>' + parseMarkdown(currentNote.content, getNotes());
+                    // 应用增强渲染
+                    applySyntaxHighlighting();
+                    applyMermaid();
+                    applyKaTeX();
                 }
             }
         }
@@ -1471,9 +1508,16 @@
                 return '<span style="color:#dc3545;text-decoration:line-through">📎 ' + name + ' (不存在)</span>';
             });
 
-            // 代码块
+            // Mermaid 图表
+            html = html.replace(/^```mermaid\n([\s\S]*?)```$/gm, function(m, code) {
+                return '<div class="mermaid">' + code + '</div>';
+            });
+
+            // 代码块（语法高亮）
             html = html.replace(/^```(\w*)\n([\s\S]*?)```$/gm, function(m, lang, code) {
-                return '<pre><code>' + code.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</code></pre>';
+                var escaped = code.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                var langClass = lang ? ' class="language-' + lang + '"' : '';
+                return '<pre><code' + langClass + '>' + escaped + '</code></pre>';
             });
 
             // 标题
@@ -1538,7 +1582,7 @@
                 if (!p) return;
                 if (p.startsWith('<h') || p.startsWith('<pre') || p.startsWith('<blockquote') ||
                     p.startsWith('<ul') || p.startsWith('<li') || p.startsWith('<table') ||
-                    p.startsWith('<hr') || p.startsWith('<img')) {
+                    p.startsWith('<hr') || p.startsWith('<img') || p.startsWith('<div class="mermaid"')) {
                     result.push(p);
                 } else {
                     result.push('<p>' + p.replace(/\n/g, '<br>') + '</p>');
@@ -1551,6 +1595,60 @@
             html = html.replace(/<\/ul>\s*<ul>/g, '');
 
             return html;
+        }
+
+        // ============ 渲染增强 ============
+        function applySyntaxHighlighting() {
+            document.querySelectorAll('#preview pre code').forEach(function(block) {
+                if (!block.classList.contains('hljs')) {
+                    hljs.highlightElement(block);
+                }
+            });
+        }
+
+        var mermaidCounter = 0;
+
+        async function applyMermaid() {
+            var promises = [];
+            document.querySelectorAll('#preview .mermaid').forEach(function(el) {
+                if (!el.dataset.processed) {
+                    el.dataset.processed = 'true';
+                    var id = 'mermaid-' + (++mermaidCounter);
+                    promises.push(
+                        mermaid.render(id, el.textContent)
+                            .then(function(result) { el.innerHTML = result.svg; })
+                            .catch(function(err) { el.innerHTML = '<p style="color:#dc3545">Mermaid 渲染失败: ' + err.message + '</p>'; })
+                    );
+                }
+            });
+            return Promise.all(promises);
+        }
+
+        function applyKaTeX() {
+            var preview = document.getElementById('preview');
+            if (preview && typeof renderMathInElement === 'function') {
+                renderMathInElement(preview, {
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '$', right: '$', display: false},
+                        {left: '\\[', right: '\\]', display: true},
+                        {left: '\\(', right: '\\)', display: false}
+                    ],
+                    throwOnError: false
+                });
+            }
+        }
+
+        // 初始化 Mermaid — 优先使用原生暗色主题
+        if (typeof mermaid !== 'undefined') {
+            mermaid.initialize({ startOnLoad: false, theme: 'default' });
+        }
+
+        // 主题切换时同步更新 Mermaid 主题
+        function updateMermaidTheme(theme) {
+            if (typeof mermaid !== 'undefined') {
+                mermaid.initialize({ startOnLoad: false, theme: theme === 'dark' ? 'dark' : 'default' });
+            }
         }
 
         // ============ 渲染笔记列表 ============
