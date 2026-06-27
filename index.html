@@ -2810,8 +2810,28 @@
             cloud.style.display = 'block';
             cloud.innerHTML = '<span style="color:#6c757d;margin-right:4px">标签:</span>' +
                 tags.map(function(t) {
-                    return '<span onclick="setTagFilter(\'' + escapeHtml(t) + '\');renderNoteList();" style="cursor:pointer;color:#4a6cf7;margin-right:8px">#' + escapeHtml(t) + ' (' + tagMap[t] + ')</span>';
+                    return '<span style="display:inline-flex;align-items:center;margin-right:8px">' +
+                        '<span onclick="setTagFilter(\'' + escapeHtml(t) + '\');renderNoteList();" style="cursor:pointer;color:#4a6cf7">#' + escapeHtml(t) + ' (' + tagMap[t] + ')</span>' +
+                        '<span onclick="deleteTag(\'' + escapeHtml(t) + '\')" style="cursor:pointer;color:#dc3545;margin-left:2px;font-size:10px">✕</span>' +
+                        '</span>';
                 }).join('');
+        }
+
+        function deleteTag(tag) {
+            if (!confirm('确定要删除标签 #' + tag + ' 吗？\n\n这将移除所有笔记中该标签的引用。')) return;
+            var notes = getNotes();
+            var updated = 0;
+            notes.forEach(function(n) {
+                if (!n.deleted && n.content.indexOf('#' + tag) !== -1) {
+                    n.content = n.content.replace(new RegExp('#' + tag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), '');
+                    n.updatedAt = new Date().toISOString();
+                    updated++;
+                }
+            });
+            saveNotes(notes);
+            if (getTagFilter() === tag) setTagFilter('');
+            renderNoteList();
+            alert('已从 ' + updated + ' 篇笔记中删除标签 #' + tag);
         }
 
         function renderFolderTree() {
