@@ -56,6 +56,7 @@
         .note-title { font-size: 14px; font-weight: 500; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .note-title .star-indicator { margin-right: 4px; }
         .note-title .pin-indicator { margin-right: 4px; }
+        .note-title .lock-indicator { margin-right: 4px; }
         .note-title .category-tag { margin-left: 4px; padding: 1px 6px; border-radius: 3px; background: #e9ecef; color: #6c757d; font-size: 11px; font-weight: normal; white-space: nowrap; }
         .note-item.active .note-title .category-tag { background: rgba(255,255,255,0.2); color: white; }
         [data-theme="dark"] .note-title .category-tag { background: #0f3460; color: #adb5bd; }
@@ -428,6 +429,7 @@
                 </div>
                 <div class="editor-actions">
                     <button id="pinNote" title="置顶">📌</button>
+                    <button id="lockNote" title="锁定/解锁">🔓</button>
                     <button id="saveNote" title="保存 (Ctrl+S)">💾</button>
                     <button id="printNote" title="打印 (Ctrl+P)">🖨️</button>
                     <button id="toggleStar" title="收藏">☆</button>
@@ -449,6 +451,7 @@
                 <button class="toolbar-btn" onclick="insertMarkdown('code')" title="代码块">{ }</button>
                 <button class="toolbar-btn" onclick="insertMarkdown('quote')" title="引用">"</button>
                 <button class="toolbar-btn" onclick="insertMarkdown('link')" title="链接 Ctrl+K">🔗</button>
+                <button class="toolbar-btn" onclick="insertWikiLink()" title="笔记内链接">📎</button>
                 <button class="toolbar-btn" onclick="insertMarkdown('table')" title="表格">▦</button>
                 <button class="toolbar-btn" onclick="insertMarkdown('hr')" title="分割线">—</button>
                 <button class="toolbar-btn" onclick="insertImage()" title="插入图片">🖼️</button>
@@ -491,6 +494,7 @@
             <button onclick="exportAs('md')">📄 Markdown (.md)</button>
             <button onclick="exportAs('html')">📋 HTML (.html)</button>
             <button onclick="exportAs('txt')">📝 纯文本 (.txt)</button>
+            <button onclick="exportAs('pdf')">📑 PDF</button>
             <button class="export-cancel" onclick="closeExportModal()">取消</button>
         </div>
     </div>
@@ -571,6 +575,7 @@
             document.getElementById('saveNote').addEventListener('click', saveCurrentNote);
             document.getElementById('toggleStar').addEventListener('click', toggleStar);
             document.getElementById('pinNote').addEventListener('click', pinNote);
+            document.getElementById('lockNote').addEventListener('click', lockNote);
             document.getElementById('exportNote').addEventListener('click', openExportModal);
             document.getElementById('printNote').addEventListener('click', printNote);
 
@@ -804,6 +809,7 @@
 
         // ============ 编辑器渲染 ============
         function renderEditor() {
+            var lockBtn = document.getElementById('lockNote');
             if (!currentNote) {
                 document.getElementById('noteTitle').value = '';
                 document.getElementById('noteContent').value = '';
@@ -812,22 +818,24 @@
                 if (pinBtn) { pinBtn.style.color = ''; }
                 var catSel = document.getElementById('noteCategory');
                 if (catSel) catSel.value = '';
+                if (lockBtn) lockBtn.textContent = '🔓';
                 updateWordCount();
                 document.getElementById('lastSaved').textContent = '未保存';
                 return;
             }
             document.getElementById('noteTitle').value = currentNote.title;
-            document.getElementById('noteContent').value = currentNote.content;
+            document.getElementById('noteContent').value = currentNote.locked ? '🔒 笔记已锁定，点击 🔓 解锁' : currentNote.content;
             document.getElementById('toggleStar').textContent = currentNote.starred ? '⭐' : '☆';
             var pinBtn = document.getElementById('pinNote');
             if (pinBtn) pinBtn.style.color = currentNote.pinned ? '#f77f00' : '';
             var catSel = document.getElementById('noteCategory');
             if (catSel) catSel.value = currentNote.category || '';
+            if (lockBtn) lockBtn.textContent = currentNote.locked ? '🔒' : '🔓';
             updateWordCount();
             updateLastSaved();
             var preview = document.getElementById('preview');
             if (!preview.classList.contains('hidden')) {
-                preview.innerHTML = parseMarkdown(currentNote.content);
+                preview.innerHTML = currentNote.locked ? '<p style="color:#dc3545;text-align:center;padding:40px">🔒 笔记已锁定</p>' : parseMarkdown(currentNote.content, getNotes());
             }
         }
 
@@ -835,6 +843,7 @@
         function autoSave() {
             if (autoSaveTimer) clearTimeout(autoSaveTimer);
             autoSaveTimer = setTimeout(function() {
+                if (!currentNote || currentNote.locked) return;
                 saveCurrentNote();
                 // 分屏模式下实时更新预览
                 if (viewMode === 'split') updatePreview();
@@ -844,7 +853,9 @@
         function saveCurrentNote() {
             if (!currentNote) return;
             currentNote.title = document.getElementById('noteTitle').value;
-            currentNote.content = document.getElementById('noteContent').value;
+            if (!currentNote.locked) {
+                currentNote.content = document.getElementById('noteContent').value;
+            }
             currentNote.category = document.getElementById('noteCategory').value;
             currentNote.updatedAt = new Date().toISOString();
             const notes = getNotes();
@@ -889,6 +900,37 @@
             document.getElementById('pinNote').textContent = currentNote.pinned ? '📌' : '📌';
             document.getElementById('pinNote').style.color = currentNote.pinned ? '#f77f00' : '';
             renderNoteList();
+        }
+
+        function lockNote() {
+            if (!currentNote) return;
+            if (currentNote.locked) {
+                // 解锁
+                var pwd = prompt('请输入密码解锁：');
+                if (pwd === null) return;
+                if (pwd !== currentNote.lockPassword) {
+                    alert('密码错误');
+                    return;
+                }
+                currentNote.locked = false;
+                currentNote.lockPassword = '';
+                saveCurrentNote();
+                renderEditor();
+                renderNoteList();
+            } else {
+                // 锁定
+                var pwd = prompt('请设置密码：');
+                if (pwd === null) return;
+                if (pwd.length < 1) {
+                    alert('密码不能为空');
+                    return;
+                }
+                currentNote.locked = true;
+                currentNote.lockPassword = pwd;
+                saveCurrentNote();
+                renderEditor();
+                renderNoteList();
+            }
         }
 
         function deleteNote() {
@@ -977,7 +1019,7 @@
             if (!currentNote) return;
             var preview = document.getElementById('preview');
             var content = document.getElementById('noteContent');
-            preview.innerHTML = '<h1>' + escapeHtml(currentNote.title) + '</h1>' + parseMarkdown(currentNote.content);
+            preview.innerHTML = '<h1>' + escapeHtml(currentNote.title) + '</h1>' + parseMarkdown(currentNote.content, getNotes());
             preview.classList.remove('hidden');
             content.classList.add('hidden');
             setTimeout(function() { window.print(); }, 100);
@@ -1105,7 +1147,7 @@
                     ext = '.md';
                     break;
                 case 'html':
-                    content = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + title + '</title></head><body>' + parseMarkdown(currentNote.content) + '</body></html>';
+                    content = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + title + '</title></head><body>' + parseMarkdown(currentNote.content, null) + '</body></html>';
                     mime = 'text/html';
                     ext = '.html';
                     break;
@@ -1114,6 +1156,17 @@
                     mime = 'text/plain';
                     ext = '.txt';
                     break;
+                case 'pdf':
+                    // 用浏览器打印生成 PDF
+                    var printWindow = window.open('', '_blank');
+                    var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + title + '</title>' +
+                        '<style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;max-width:800px;margin:40px auto;padding:0 20px;line-height:1.8;color:#333}h1{border-bottom:2px solid #4a6cf7;padding-bottom:10px}h2{border-bottom:1px solid #dee2e6;padding-bottom:8px}pre{background:#f8f9fa;padding:12px;border-radius:6px;overflow-x:auto}code{background:#f8f9fa;padding:2px 6px;border-radius:3px}blockquote{border-left:4px solid #4a6cf7;padding:8px 16px;color:#6c757d;margin:16px 0}table{border-collapse:collapse;width:100%;margin:16px 0}th,td{border:1px solid #dee2e6;padding:8px 12px;text-align:left}th{background:#f8f9fa}img{max-width:100%;height:auto}ul,ol{padding-left:24px}hr{border:none;border-top:1px solid #dee2e6;margin:20px 0}</style>' +
+                        '</head><body><h1>' + escapeHtml(title) + '</h1>' + parseMarkdown(currentNote.content, null) + '</body></html>';
+                    printWindow.document.write(html);
+                    printWindow.document.close();
+                    setTimeout(function() { printWindow.print(); }, 500);
+                    closeExportModal();
+                    return;
             }
 
             var blob = new Blob([content], { type: mime + ';charset=utf-8' });
@@ -1172,6 +1225,17 @@
         }
 
         // ============ Markdown 编辑器工具栏 ============
+        function insertWikiLink() {
+            var textarea = document.getElementById('noteContent');
+            var start = textarea.selectionStart;
+            var text = textarea.value;
+            var insert = '[[笔记名]]';
+            textarea.value = text.substring(0, start) + insert + text.substring(start);
+            textarea.focus();
+            textarea.selectionStart = textarea.selectionEnd = start + 2;
+            autoSave();
+        }
+
         function insertMarkdown(command) {
             var textarea = document.getElementById('noteContent');
             var start = textarea.selectionStart;
@@ -1280,13 +1344,27 @@
         function updatePreview() {
             var preview = document.getElementById('preview');
             if (currentNote) {
-                preview.innerHTML = '<h1>' + escapeHtml(currentNote.title) + '</h1>' + parseMarkdown(currentNote.content);
+                if (currentNote.locked) {
+                    preview.innerHTML = '<p style="color:#dc3545;text-align:center;padding:40px">🔒 笔记已锁定</p>';
+                } else {
+                    preview.innerHTML = '<h1>' + escapeHtml(currentNote.title) + '</h1>' + parseMarkdown(currentNote.content, getNotes());
+                }
             }
         }
 
-        function parseMarkdown(md) {
+        function parseMarkdown(md, notes) {
             if (!md) return '';
             var html = md;
+
+            // 笔记内链接 [[笔记名]]
+            html = html.replace(/\[\[([^\]]+)\]\]/g, function(m, name) {
+                if (!notes) return m;
+                var target = notes.find(function(n) { return n.title === name && !n.deleted; });
+                if (target) {
+                    return '<a href="#" onclick="loadNote(\'' + target.id + '\');return false;" style="color:#4a6cf7;font-weight:500">📎 ' + name + '</a>';
+                }
+                return '<span style="color:#dc3545;text-decoration:line-through">📎 ' + name + ' (不存在)</span>';
+            });
 
             // 代码块
             html = html.replace(/^```(\w*)\n([\s\S]*?)```$/gm, function(m, lang, code) {
@@ -1428,6 +1506,7 @@
                 var star = note.starred ? '<span class="star-indicator">⭐</span>' : '';
                 var pin = note.pinned ? '<span class="pin-indicator">📌</span>' : '';
                 var category = note.category ? '<span class="category-tag">' + note.category + '</span>' : '';
+                var lock = note.locked ? '<span class="lock-indicator">🔒</span>' : '';
                 var itemClass = 'note-item ' + active + ' ' + selected;
                 var clickAttr = isSelecting ? 'onclick="toggleSelect(\'' + note.id + '\')"' : (currentFilter === 'trash' ? 'onclick="restoreNote(\'' + note.id + '\')"' : 'onclick="loadNote(\'' + note.id + '\')"');
                 return '<div class="' + itemClass + '" ' + clickAttr +
@@ -1439,7 +1518,7 @@
                     ' data-note-id="' + note.id + '">' +
                     '<span class="note-checkbox"></span>' +
                     '<div class="note-item-inner">' +
-                    '<div class="note-title">' + pin + star + (note.title || '无标题') + category + '</div>' +
+                    '<div class="note-title">' + lock + pin + star + (note.title || '无标题') + category + '</div>' +
                     '<div class="note-preview">' + (preview || '空笔记') + '</div>' +
                     '<div class="note-date">' + date + '</div></div></div>';
             }).join('');
