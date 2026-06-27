@@ -15,6 +15,8 @@ CREATE TABLE notes (
     category TEXT DEFAULT '',
     tags TEXT[] DEFAULT '{}',
     folder TEXT DEFAULT '',
+    versions JSONB DEFAULT '[]',
+    comments JSONB DEFAULT '[]',
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );

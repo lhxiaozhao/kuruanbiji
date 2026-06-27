@@ -654,6 +654,8 @@
                                 category: n.category || '',
                                 tags: n.tags || [],
                                 folder: n.folder || '',
+                                versions: n.versions || [],
+                                comments: n.comments || [],
                                 created_at: n.createdAt,
                                 updated_at: n.updatedAt
                             };
@@ -676,7 +678,7 @@
                     .order('updated_at', { ascending: false });
                 if (error) throw error;
                 if (data && data.length > 0) {
-                    var notes = data.map(function(n) {
+                    var remoteNotes = data.map(function(n) {
                         return {
                             id: n.id,
                             title: n.title,
@@ -689,17 +691,54 @@
                             category: n.category || '',
                             tags: n.tags || [],
                             folder: n.folder || '',
+                            versions: n.versions || [],
+                            comments: n.comments || [],
                             createdAt: n.created_at,
                             updatedAt: n.updated_at
                         };
                     });
-                    localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
+                    // 冲突检测与合并
+                    var merged = mergeNotesWithRemote(getNotes(), remoteNotes);
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
                     renderNoteList();
                     if (currentNote) renderEditor();
                 }
             } catch (err) {
                 console.error('Load error:', err);
             }
+        }
+
+        function mergeNotesWithRemote(localNotes, remoteNotes) {
+            var merged = [];
+            var remoteMap = {};
+            remoteNotes.forEach(function(n) { remoteMap[n.id] = n; });
+
+            localNotes.forEach(function(local) {
+                var remote = remoteMap[local.id];
+                if (!remote) {
+                    // 本地有，远程没有 → 保留本地（可能是新创建的）
+                    merged.push(local);
+                } else if (local.updatedAt > remote.updatedAt) {
+                    // 本地更新 → 保留本地
+                    merged.push(local);
+                } else if (local.updatedAt < remote.updatedAt) {
+                    // 远程更新 → 使用远程，但保留本地版本历史
+                    remote.versions = local.versions || [];
+                    merged.push(remote);
+                } else {
+                    // 时间相同 → 保留本地（当前设备编辑）
+                    merged.push(local);
+                }
+            });
+
+            // 添加远程有但本地没有的笔记
+            remoteNotes.forEach(function(remote) {
+                if (!remoteMap[remote.id] || !merged.find(function(n) { return n.id === remote.id; })) {
+                    merged.push(remote);
+                }
+            });
+
+            return merged;
         }
 
         function watchSupabase() {
