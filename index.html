@@ -179,6 +179,103 @@
         [data-theme="dark"] .theme-toggle { color: #adb5bd; }
         [data-theme="dark"] .theme-toggle:hover { background: #0f3460; color: #e9ecef; }
 
+        /* 查找替换 */
+        .find-bar {
+            display: none;
+            padding: 8px 24px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+            gap: 8px;
+            align-items: center;
+        }
+        .find-bar.show { display: flex; }
+        .find-bar input {
+            padding: 6px 10px;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            font-size: 13px;
+            outline: none;
+            background: #fff;
+        }
+        .find-bar input:focus { border-color: #4a6cf7; }
+        .find-bar .find-input { width: 160px; }
+        .find-bar .replace-input { width: 160px; }
+        .find-bar .find-count { font-size: 12px; color: #6c757d; min-width: 60px; }
+        .find-bar button {
+            padding: 5px 10px;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            background: #fff;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .find-bar button:hover { background: #4a6cf7; color: white; border-color: #4a6cf7; }
+        .find-bar .find-close {
+            background: transparent;
+            border: none;
+            font-size: 16px;
+            color: #6c757d;
+            padding: 2px 6px;
+        }
+        .find-bar .find-close:hover { background: transparent; color: #333; }
+        [data-theme="dark"] .find-bar { background: #16213e; border-color: #2d3748; }
+        [data-theme="dark"] .find-bar input { background: #1a1a2e; color: #e9ecef; border-color: #2d3748; }
+        [data-theme="dark"] .find-bar button { background: #1a1a2e; color: #e9ecef; border-color: #2d3748; }
+        [data-theme="dark"] .find-bar .find-close { color: #adb5bd; }
+        [data-theme="dark"] .find-bar .find-close:hover { color: #e9ecef; }
+
+        /* 导出弹窗 */
+        .export-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .export-modal.show { display: flex; }
+        .export-modal-content {
+            background: #fff;
+            border-radius: 8px;
+            padding: 24px;
+            min-width: 280px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        }
+        .export-modal h3 {
+            font-size: 16px;
+            margin-bottom: 16px;
+            color: #333;
+        }
+        .export-modal button {
+            display: block;
+            width: 100%;
+            padding: 10px 16px;
+            margin-bottom: 8px;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            background: #fff;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+        }
+        .export-modal button:hover { background: #4a6cf7; color: white; border-color: #4a6cf7; }
+        .export-modal button:last-child { margin-bottom: 0; }
+        .export-modal .export-cancel {
+            background: transparent;
+            border: none;
+            color: #6c757d;
+            margin-top: 8px;
+        }
+        .export-modal .export-cancel:hover { background: transparent; color: #333; }
+        [data-theme="dark"] .export-modal-content { background: #1a1a2e; color: #e9ecef; }
+        [data-theme="dark"] .export-modal h3 { color: #e9ecef; }
+        [data-theme="dark"] .export-modal button { background: #16213e; color: #e9ecef; border-color: #2d3748; }
+        [data-theme="dark"] .export-modal .export-cancel { color: #adb5bd; }
+        [data-theme="dark"] .export-modal .export-cancel:hover { color: #e9ecef; }
+
         /* 暗色主题 */
         [data-theme="dark"] { background: #1a1a2e; color: #e9ecef; }
         [data-theme="dark"] .sidebar { background: #16213e; border-color: #2d3748; }
@@ -304,10 +401,22 @@
                 <button class="toolbar-btn" onclick="insertImage()" title="插入图片">🖼️</button>
                 <span class="toolbar-divider"></span>
                 <button class="toolbar-btn" onclick="togglePreview()" id="previewToggle" title="分屏预览">👁️</button>
+                <button class="toolbar-btn" onclick="toggleFindBar()" title="查找替换 Ctrl+F">🔍</button>
+            </div>
+
+            <div class="find-bar" id="findBar">
+                <input type="text" class="find-input" id="findInput" placeholder="查找...">
+                <span class="find-count" id="findCount">0/0</span>
+                <button onclick="findPrev()">◀</button>
+                <button onclick="findNext()">▶</button>
+                <input type="text" class="replace-input" id="replaceInput" placeholder="替换...">
+                <button onclick="replaceOne()">替换</button>
+                <button onclick="replaceAll()">全部替换</button>
+                <button class="find-close" onclick="toggleFindBar()">✕</button>
             </div>
 
             <div class="editor-body">
-                <textarea id="noteContent" placeholder="开始写作...&#10;&#10;Ctrl+B 粗体 / Ctrl+I 斜体 / Ctrl+K 链接&#10;Ctrl+S 保存 / Ctrl+N 新建 / Ctrl+P 打印"></textarea>
+                <textarea id="noteContent" placeholder="开始写作..."></textarea>
                 <div id="preview" class="hidden"></div>
             </div>
             <div class="editor-footer">
@@ -320,6 +429,17 @@
                 </div>
             </div>
         </main>
+    </div>
+
+    <!-- 导出弹窗 -->
+    <div class="export-modal" id="exportModal">
+        <div class="export-modal-content">
+            <h3>导出笔记</h3>
+            <button onclick="exportAs('md')">📄 Markdown (.md)</button>
+            <button onclick="exportAs('html')">📋 HTML (.html)</button>
+            <button onclick="exportAs('txt')">📝 纯文本 (.txt)</button>
+            <button class="export-cancel" onclick="closeExportModal()">取消</button>
+        </div>
     </div>
 
     <script>
@@ -393,8 +513,23 @@
             document.getElementById('noteContent').addEventListener('input', function() { autoSave(); updateWordCount(); });
             document.getElementById('saveNote').addEventListener('click', saveCurrentNote);
             document.getElementById('toggleStar').addEventListener('click', toggleStar);
-            document.getElementById('exportNote').addEventListener('click', exportNote);
+            document.getElementById('exportNote').addEventListener('click', openExportModal);
             document.getElementById('printNote').addEventListener('click', printNote);
+
+            // 查找替换输入监听
+            document.getElementById('findInput').addEventListener('input', doFind);
+            document.getElementById('findInput').addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (e.shiftKey) findPrev(); else findNext();
+                }
+            });
+            document.getElementById('replaceInput').addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    replaceOne();
+                }
+            });
 
             // Markdown 快捷键
             document.getElementById('noteContent').addEventListener('keydown', function(e) {
@@ -416,6 +551,14 @@
                     if (e.key === 's') { e.preventDefault(); saveCurrentNote(); }
                     else if (e.key === 'n') { e.preventDefault(); createNewNote(); }
                     else if (e.key === 'p') { e.preventDefault(); printNote(); }
+                    else if (e.key === 'f') { e.preventDefault(); toggleFindBar(); }
+                }
+                // ESC 关闭查找栏
+                if (e.key === 'Escape') {
+                    var findBar = document.getElementById('findBar');
+                    if (findBar.classList.contains('show')) toggleFindBar();
+                    var exportModal = document.getElementById('exportModal');
+                    if (exportModal.classList.contains('show')) closeExportModal();
                 }
             });
 
@@ -659,6 +802,149 @@
             preview.classList.remove('hidden');
             content.classList.add('hidden');
             setTimeout(function() { window.print(); }, 100);
+        }
+
+        // ============ 查找替换 ============
+        var findMatches = [];
+        var findIndex = -1;
+
+        function toggleFindBar() {
+            var bar = document.getElementById('findBar');
+            bar.classList.toggle('show');
+            if (bar.classList.contains('show')) {
+                document.getElementById('findInput').focus();
+                // 如果有选中文本，自动填入
+                var textarea = document.getElementById('noteContent');
+                var start = textarea.selectionStart;
+                var end = textarea.selectionEnd;
+                if (start !== end) {
+                    document.getElementById('findInput').value = textarea.value.substring(start, end);
+                    doFind();
+                }
+            } else {
+                // 关闭时清除高亮
+                findMatches = [];
+                findIndex = -1;
+            }
+        }
+
+        function doFind() {
+            var query = document.getElementById('findInput').value;
+            var textarea = document.getElementById('noteContent');
+            var text = textarea.value;
+            findMatches = [];
+            findIndex = -1;
+
+            if (!query) {
+                document.getElementById('findCount').textContent = '0/0';
+                return;
+            }
+
+            var idx = 0;
+            while ((idx = text.indexOf(query, idx)) !== -1) {
+                findMatches.push(idx);
+                idx += query.length;
+            }
+
+            if (findMatches.length > 0) {
+                findIndex = 0;
+                selectMatch(findMatches[0], query.length);
+            }
+
+            document.getElementById('findCount').textContent = findMatches.length > 0 ? (findIndex + 1) + '/' + findMatches.length : '0/' + findMatches.length;
+        }
+
+        function selectMatch(start, length) {
+            var textarea = document.getElementById('noteContent');
+            textarea.focus();
+            textarea.selectionStart = start;
+            textarea.selectionEnd = start + length;
+            // 滚动到选中位置
+            var lineHeight = 24; // 估算行高
+            var scrollPos = Math.floor(start / 60) * lineHeight; // 估算每行60字符
+            textarea.scrollTop = scrollPos - textarea.clientHeight / 2;
+        }
+
+        function findNext() {
+            if (findMatches.length === 0) return;
+            findIndex = (findIndex + 1) % findMatches.length;
+            selectMatch(findMatches[findIndex], document.getElementById('findInput').value.length);
+            document.getElementById('findCount').textContent = (findIndex + 1) + '/' + findMatches.length;
+        }
+
+        function findPrev() {
+            if (findMatches.length === 0) return;
+            findIndex = (findIndex - 1 + findMatches.length) % findMatches.length;
+            selectMatch(findMatches[findIndex], document.getElementById('findInput').value.length);
+            document.getElementById('findCount').textContent = (findIndex + 1) + '/' + findMatches.length;
+        }
+
+        function replaceOne() {
+            if (findMatches.length === 0) return;
+            var query = document.getElementById('findInput').value;
+            var replace = document.getElementById('replaceInput').value;
+            var textarea = document.getElementById('noteContent');
+            var text = textarea.value;
+            var start = findMatches[findIndex];
+            text = text.substring(0, start) + replace + text.substring(start + query.length);
+            textarea.value = text;
+            doFind(); // 重新查找
+            autoSave();
+        }
+
+        function replaceAll() {
+            if (findMatches.length === 0) return;
+            var query = document.getElementById('findInput').value;
+            var replace = document.getElementById('replaceInput').value;
+            var textarea = document.getElementById('noteContent');
+            textarea.value = textarea.value.split(query).join(replace);
+            doFind();
+            autoSave();
+        }
+
+        // ============ 导出 ============
+        function openExportModal() {
+            if (!currentNote) return;
+            document.getElementById('exportModal').classList.add('show');
+        }
+
+        function closeExportModal() {
+            document.getElementById('exportModal').classList.remove('show');
+        }
+
+        function exportAs(format) {
+            if (!currentNote) return;
+            var title = currentNote.title || 'untitled';
+            var content;
+            var mime;
+            var ext;
+
+            switch(format) {
+                case 'md':
+                    content = '# ' + title + '\n\n' + currentNote.content;
+                    mime = 'text/markdown';
+                    ext = '.md';
+                    break;
+                case 'html':
+                    content = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + title + '</title></head><body>' + parseMarkdown(currentNote.content) + '</body></html>';
+                    mime = 'text/html';
+                    ext = '.html';
+                    break;
+                case 'txt':
+                    content = title + '\n\n' + currentNote.content.replace(/[#*`\[\]()<>]|<\/?>[^>]+(>|$)/g, '');
+                    mime = 'text/plain';
+                    ext = '.txt';
+                    break;
+            }
+
+            var blob = new Blob([content], { type: mime + ';charset=utf-8' });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = title + ext;
+            a.click();
+            URL.revokeObjectURL(url);
+            closeExportModal();
         }
 
         function insertImage() {
