@@ -34,12 +34,15 @@
         #searchInput { width: 100%; padding: 8px 12px; border: 1px solid #dee2e6; border-radius: 6px; font-size: 14px; outline: none; }
         #searchInput:focus { border-color: #4a6cf7; }
 
-        .sidebar-toolbar { display: flex; justify-content: space-between; align-items: center; padding: 8px 16px; border-bottom: 1px solid #dee2e6; }
-        .filter-tabs { display: flex; gap: 6px; }
-        .tab { padding: 4px 10px; border: none; border-radius: 4px; background: transparent; color: #6c757d; cursor: pointer; font-size: 12px; }
+        .sidebar-toolbar { display: flex; justify-content: space-between; align-items: center; padding: 8px 16px; border-bottom: 1px solid #dee2e6; gap: 4px; }
+        .toolbar-left, .toolbar-right { display: flex; gap: 4px; align-items: center; flex-wrap: nowrap; }
+        .toolbar-left { flex: 1; min-width: 0; }
+        .toolbar-right { flex-shrink: 0; }
+        .filter-tabs { display: flex; gap: 3px; flex-shrink: 0; }
+        .tab { padding: 4px 6px; border: none; border-radius: 4px; background: transparent; color: #6c757d; cursor: pointer; font-size: 11px; white-space: nowrap; }
         .tab.active { background: #4a6cf7; color: white; }
         .tab:hover:not(.active) { background: #e9ecef; }
-        .sort-select { font-size: 11px; padding: 3px 6px; border: 1px solid #dee2e6; border-radius: 4px; background: #fff; color: #6c757d; cursor: pointer; outline: none; }
+        .sort-select { font-size: 10px; padding: 3px 2px; border: 1px solid #dee2e6; border-radius: 4px; background: #fff; color: #6c757d; cursor: pointer; outline: none; max-width: 65px; flex-shrink: 0; }
         .trash-clear-btn { padding: 3px 8px; border: 1px solid #dee2e6; border-radius: 4px; background: #fff; cursor: pointer; font-size: 12px; color: #dc3545; display: none; }
         .trash-clear-btn:hover { background: #dc3545; color: white; border-color: #dc3545; }
         [data-theme="dark"] .trash-clear-btn { background: #1a1a2e; color: #dc3545; border-color: #2d3748; }
@@ -53,6 +56,9 @@
         .note-title { font-size: 14px; font-weight: 500; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .note-title .star-indicator { margin-right: 4px; }
         .note-title .pin-indicator { margin-right: 4px; }
+        .note-title .category-tag { margin-left: 4px; padding: 1px 6px; border-radius: 3px; background: #e9ecef; color: #6c757d; font-size: 11px; font-weight: normal; white-space: nowrap; }
+        .note-item.active .note-title .category-tag { background: rgba(255,255,255,0.2); color: white; }
+        [data-theme="dark"] .note-title .category-tag { background: #0f3460; color: #adb5bd; }
         .note-preview { font-size: 12px; color: #6c757d; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px; }
         .note-date { font-size: 11px; color: #adb5bd; }
         .note-item.active .note-date .note-date-text { color: rgba(255,255,255,0.8); }
@@ -146,11 +152,14 @@
         .editor { flex: 1; display: flex; flex-direction: column; min-width: 0; transition: margin-left 0.3s; }
         .editor.expanded { margin-left: 0; }
         .editor-header { padding: 12px 24px; border-bottom: 1px solid #dee2e6; display: flex; justify-content: space-between; align-items: center; }
-        #noteTitle { flex: 1; padding: 8px 12px; border: 1px solid #dee2e6; border-radius: 6px; font-size: 16px; font-weight: 500; outline: none; margin-right: 12px; min-width: 0; }
+        #noteTitle { flex: 1; padding: 8px 12px; border: 1px solid #dee2e6; border-radius: 6px; font-size: 16px; font-weight: 500; outline: none; min-width: 0; }
         #noteTitle:focus { border-color: #4a6cf7; }
+        .category-select { padding: 6px 10px; border: 1px solid #dee2e6; border-radius: 6px; font-size: 13px; background: #fff; color: #6c757d; cursor: pointer; outline: none; flex-shrink: 0; }
+        .category-select:focus { border-color: #4a6cf7; }
         .editor-actions { display: flex; gap: 4px; flex-shrink: 0; }
         .editor-actions button { width: 32px; height: 32px; border: 1px solid #dee2e6; border-radius: 6px; background: #f8f9fa; cursor: pointer; font-size: 14px; }
         .editor-actions button:hover { background: #4a6cf7; color: white; border-color: #4a6cf7; }
+        [data-theme="dark"] .category-select { background: #16213e; color: #e9ecef; border-color: #2d3748; }
 
         /* 编辑器工具栏 */
         .editor-toolbar { padding: 8px 24px; border-bottom: 1px solid #dee2e6; display: flex; gap: 4px; flex-wrap: wrap; background: #f8f9fa; }
@@ -360,12 +369,23 @@
                 <input type="text" id="searchInput" placeholder="搜索笔记...">
             </div>
             <div class="sidebar-toolbar">
-                <div class="filter-tabs">
-                    <button class="tab active" onclick="switchFilter('all', this)">全部</button>
-                    <button class="tab" onclick="switchFilter('starred', this)">⭐</button>
-                    <button class="tab" onclick="switchFilter('trash', this)">🗑️</button>
+                <div class="toolbar-left">
+                    <div class="filter-tabs">
+                        <button class="tab active" onclick="switchFilter('all', this)">全部</button>
+                        <button class="tab" onclick="switchFilter('starred', this)">⭐</button>
+                        <button class="tab" onclick="switchFilter('trash', this)">🗑️</button>
+                    </div>
+                    <select class="sort-select" id="categorySelect" onchange="renderNoteList()">
+                        <option value="">分类</option>
+                        <option value="工作">💼 工作</option>
+                        <option value="项目">📊 项目</option>
+                        <option value="客户">👥 客户</option>
+                        <option value="学习">📖 学习</option>
+                        <option value="生活">🌟 生活</option>
+                        <option value="其他">📌 其他</option>
+                    </select>
                 </div>
-                <div style="display:flex;gap:4px;align-items:center">
+                <div class="toolbar-right">
                     <select class="sort-select" id="sortSelect" onchange="renderNoteList()">
                         <option value="updated">按修改时间</option>
                         <option value="created">按创建时间</option>
@@ -394,7 +414,18 @@
 
         <main class="editor">
             <div class="editor-header">
-                <input type="text" id="noteTitle" placeholder="笔记标题">
+                <div style="display:flex;flex:1;align-items:center;gap:8px;min-width:0">
+                    <input type="text" id="noteTitle" placeholder="笔记标题">
+                    <select id="noteCategory" class="category-select" onchange="changeCategory()">
+                        <option value="">未分类</option>
+                        <option value="工作">💼 工作</option>
+                        <option value="项目">📊 项目</option>
+                        <option value="客户">👥 客户</option>
+                        <option value="学习">📖 学习</option>
+                        <option value="生活">🌟 生活</option>
+                        <option value="其他">📌 其他</option>
+                    </select>
+                </div>
                 <div class="editor-actions">
                     <button id="pinNote" title="置顶">📌</button>
                     <button id="saveNote" title="保存 (Ctrl+S)">💾</button>
@@ -779,6 +810,8 @@
                 document.getElementById('toggleStar').textContent = '☆';
                 var pinBtn = document.getElementById('pinNote');
                 if (pinBtn) { pinBtn.style.color = ''; }
+                var catSel = document.getElementById('noteCategory');
+                if (catSel) catSel.value = '';
                 updateWordCount();
                 document.getElementById('lastSaved').textContent = '未保存';
                 return;
@@ -788,6 +821,8 @@
             document.getElementById('toggleStar').textContent = currentNote.starred ? '⭐' : '☆';
             var pinBtn = document.getElementById('pinNote');
             if (pinBtn) pinBtn.style.color = currentNote.pinned ? '#f77f00' : '';
+            var catSel = document.getElementById('noteCategory');
+            if (catSel) catSel.value = currentNote.category || '';
             updateWordCount();
             updateLastSaved();
             var preview = document.getElementById('preview');
@@ -810,6 +845,7 @@
             if (!currentNote) return;
             currentNote.title = document.getElementById('noteTitle').value;
             currentNote.content = document.getElementById('noteContent').value;
+            currentNote.category = document.getElementById('noteCategory').value;
             currentNote.updatedAt = new Date().toISOString();
             const notes = getNotes();
             const index = notes.findIndex(function(n) { return n.id === currentNote.id; });
@@ -836,6 +872,13 @@
             currentNote.starred = !currentNote.starred;
             saveCurrentNote();
             document.getElementById('toggleStar').textContent = currentNote.starred ? '⭐' : '☆';
+            renderNoteList();
+        }
+
+        function changeCategory() {
+            if (!currentNote) return;
+            currentNote.category = document.getElementById('noteCategory').value;
+            saveCurrentNote();
             renderNoteList();
         }
 
@@ -1343,10 +1386,15 @@
             var notes = getNotes();
             var keyword = document.getElementById('searchInput').value;
             var sortKey = document.getElementById('sortSelect').value;
+            var categoryFilter = document.getElementById('categorySelect').value;
 
             if (currentFilter === 'all') notes = notes.filter(function(n) { return !n.deleted; });
             else if (currentFilter === 'starred') notes = notes.filter(function(n) { return n.starred && !n.deleted; });
             else if (currentFilter === 'trash') notes = notes.filter(function(n) { return n.deleted; });
+
+            if (categoryFilter) {
+                notes = notes.filter(function(n) { return n.category === categoryFilter; });
+            }
 
             if (keyword) {
                 var lower = keyword.toLowerCase();
@@ -1379,6 +1427,7 @@
                 var selected = selectedNotes.has(note.id) ? 'selected' : '';
                 var star = note.starred ? '<span class="star-indicator">⭐</span>' : '';
                 var pin = note.pinned ? '<span class="pin-indicator">📌</span>' : '';
+                var category = note.category ? '<span class="category-tag">' + note.category + '</span>' : '';
                 var itemClass = 'note-item ' + active + ' ' + selected;
                 var clickAttr = isSelecting ? 'onclick="toggleSelect(\'' + note.id + '\')"' : (currentFilter === 'trash' ? 'onclick="restoreNote(\'' + note.id + '\')"' : 'onclick="loadNote(\'' + note.id + '\')"');
                 return '<div class="' + itemClass + '" ' + clickAttr +
@@ -1390,7 +1439,7 @@
                     ' data-note-id="' + note.id + '">' +
                     '<span class="note-checkbox"></span>' +
                     '<div class="note-item-inner">' +
-                    '<div class="note-title">' + pin + star + (note.title || '无标题') + '</div>' +
+                    '<div class="note-title">' + pin + star + (note.title || '无标题') + category + '</div>' +
                     '<div class="note-preview">' + (preview || '空笔记') + '</div>' +
                     '<div class="note-date">' + date + '</div></div></div>';
             }).join('');
