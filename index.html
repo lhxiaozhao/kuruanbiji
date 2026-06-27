@@ -8,9 +8,7 @@
     <meta name="theme-color" content="#4a6cf7">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="酷软笔记">
-    <script src="https://cdn.jsdelivr.net/npm/firebase@10.7.0/firebase-app-compat.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/firebase@10.7.0/firebase-auth-compat.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/firebase@10.7.0/firebase-database-compat.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.48.1/dist/umd/supabase.min.js"></script>
     <!-- Syntax Highlighting -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github.min.css">
     <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/highlight.min.js"></script>
@@ -523,24 +521,14 @@
     </div>
 
     <script>
-        // ============ Firebase 配置 ============
-        const firebaseConfig = {
-            apiKey: "AIzaSyAf3O-rnOGaEkHiloBFIvDgG-D8x2NHC2Y",
-            authDomain: "kuruanbiji.firebaseapp.com",
-            databaseURL: "https://kuruanbiji-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "kuruanbiji",
-            storageBucket: "kuruanbiji.firebasestorage.app",
-            messagingSenderId: "1059282975362",
-            appId: "1:1059282975362:web:06965378917edb7248129b",
-            measurementId: "G-N2B6TLVGFC"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.database();
+        // ============ Supabase 配置 ============
+        const SUPABASE_URL = 'https://hluiebxqsjwlndfdeijo.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_pub…jC63';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         // ============ 存储层 ============
-        const STORAGE_KEY = 'coolsoft-notes-v3';
-        let firebaseUser = null;
+        const STORAGE_KEY = '***';
+        let supabaseUser = null;
         let syncTimer = null;
 
         function getNotes() {
@@ -551,65 +539,118 @@
         }
         function saveNotes(notes) {
             try { localStorage.setItem(STORAGE_KEY, JSON.stringify(notes)); } catch (e) {}
-            // 同步到 Firebase
-            if (firebaseUser) syncToFirebase(notes);
+            // 同步到 Supabase
+            if (supabaseUser) syncToSupabase(notes);
         }
 
-        // ============ Firebase 同步 ============
-        function syncToFirebase(notes) {
-            if (!firebaseUser) return;
+        // ============ Supabase 同步 ============
+        async function syncToSupabase(notes) {
+            if (!supabaseUser) return;
             if (syncTimer) clearTimeout(syncTimer);
-            syncTimer = setTimeout(function() {
-                db.ref('users/' + firebaseUser.uid + '/notes').set(notes);
+            syncTimer = setTimeout(async function() {
+                try {
+                    await supabase.from('notes').upsert(
+                        notes.map(function(n) {
+                            return {
+                                id: n.id,
+                                user_id: supabaseUser.id,
+                                title: n.title,
+                                content: n.content,
+                                starred: n.starred,
+                                deleted: n.deleted,
+                                pinned: n.pinned,
+                                locked: n.locked,
+                                lockPassword: n.lockPassword || '',
+                                category: n.category || '',
+                                tags: n.tags || [],
+                                folder: n.folder || '',
+                                created_at: n.createdAt,
+                                updated_at: n.updatedAt
+                            };
+                        }),
+                        { onConflict: 'id' }
+                    );
+                } catch (err) {
+                    console.error('Sync error:', err);
+                }
             }, 1000);
         }
 
-        function loadFromFirebase() {
-            if (!firebaseUser) return;
-            db.ref('users/' + firebaseUser.uid + '/notes').once('value').then(function(snapshot) {
-                var data = snapshot.val();
-                if (data) {
-                    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        async function loadFromSupabase() {
+            if (!supabaseUser) return;
+            try {
+                const { data, error } = await supabase
+                    .from('notes')
+                    .select('*')
+                    .eq('user_id', supabaseUser.id)
+                    .order('updated_at', { ascending: false });
+                if (error) throw error;
+                if (data && data.length > 0) {
+                    var notes = data.map(function(n) {
+                        return {
+                            id: n.id,
+                            title: n.title,
+                            content: n.content,
+                            starred: n.starred,
+                            deleted: n.deleted,
+                            pinned: n.pinned,
+                            locked: n.locked,
+                            lockPassword: n.lockPassword || '',
+                            category: n.category || '',
+                            tags: n.tags || [],
+                            folder: n.folder || '',
+                            createdAt: n.created_at,
+                            updatedAt: n.updated_at
+                        };
+                    });
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
                     renderNoteList();
                     if (currentNote) renderEditor();
                 }
-            });
+            } catch (err) {
+                console.error('Load error:', err);
+            }
         }
 
-        function watchFirebase() {
-            if (!firebaseUser) return;
-            db.ref('users/' + firebaseUser.uid + '/notes').on('value', function(snapshot) {
-                var data = snapshot.val();
-                if (data) {
-                    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-                    renderNoteList();
-                    if (currentNote) renderEditor();
-                }
-            });
+        function watchSupabase() {
+            if (!supabaseUser) return;
+            supabase
+                .channel('notes_changes')
+                .on('postgres_changes',
+                    { event: '*', schema: 'public', table: 'notes', filter: 'user_id=eq.' + supabaseUser.id },
+                    function() {
+                        loadFromSupabase();
+                    }
+                )
+                .subscribe();
         }
 
-        function loginWithGoogle() {
-            var provider = new firebase.auth.GoogleAuthProvider();
-            auth.signInWithPopup(provider).catch(function(error) {
-                alert('登录失败: ' + error.message);
-            });
+        async function loginWithSupabase() {
+            try {
+                const { data, error } = await supabase.auth.signInWithOAuth({
+                    provider: 'google',
+                    options: { redirectTo: window.location.origin }
+                });
+                if (error) throw error;
+            } catch (err) {
+                alert('登录失败: ' + err.message);
+            }
         }
 
-        function logout() {
-            auth.signOut().then(function() {
-                firebaseUser = null;
-                updateAuthUI();
-            });
+        async function logout() {
+            await supabase.auth.signOut();
+            supabaseUser = null;
+            updateAuthUI();
         }
 
         function updateAuthUI() {
             var loginBtn = document.getElementById('loginBtn');
             if (!loginBtn) return;
-            if (firebaseUser) {
-                if (firebaseUser.isAnonymous) {
-                    loginBtn.innerHTML = '<button onclick="loginWithGoogle()" style="font-size:12px;color:#4a6cf7;background:none;border:1px solid #4a6cf7;border-radius:4px;padding:4px 10px;cursor:pointer">🔑 登录以同步</button>';
+            if (supabaseUser) {
+                if (supabaseUser.is_anonymous) {
+                    loginBtn.innerHTML = '<button onclick="loginWithSupabase()" style="font-size:12px;color:#4a6cf7;background:none;border:1px solid #4a6cf7;border-radius:4px;padding:4px 10px;cursor:pointer">🔑 登录以同步</button>';
                 } else {
-                    loginBtn.innerHTML = '<span style="font-size:12px;color:#4a6cf7">✓ 已同步 (' + (firebaseUser.displayName || firebaseUser.email || 'Google') + ')</span>';
+                    loginBtn.innerHTML = '<span style="font-size:12px;color:#4a6cf7">✓ 已同步 (' + (supabaseUser.email || 'Google') + ')</span>';
                 }
             } else {
                 loginBtn.innerHTML = '<span style="font-size:12px;color:#6c757d">⏳ 连接中...</span>';
@@ -617,21 +658,22 @@
         }
 
         // 监听登录状态
-        auth.onAuthStateChanged(function(user) {
-            firebaseUser = user;
+        supabase.auth.onAuthStateChange(function(event, session) {
+            supabaseUser = session ? session.user : null;
             updateAuthUI();
-            if (user) {
-                watchFirebase();
-                loadFromFirebase();
+            if (supabaseUser) {
+                watchSupabase();
+                loadFromSupabase();
             }
         });
 
         // 自动匿名登录
-        if (!firebaseUser) {
-            auth.signInAnonymously().catch(function(error) {
+        if (!supabaseUser) {
+            supabase.auth.signInAnonymously().catch(function(error) {
                 console.log('Anonymous login failed:', error);
             });
         }
+
 
         // ============ 应用状态 ============
         let currentNote = null;
@@ -650,7 +692,7 @@
             document.documentElement.setAttribute('data-theme', theme);
             document.getElementById('themeToggle').textContent = theme === 'dark' ? '🌙' : '☀️';
 
-            // 初始化 Firebase 登录 UI
+            // 初始化 Supabase 登录 UI
             updateAuthUI();
 
             // 注册 Service Worker
