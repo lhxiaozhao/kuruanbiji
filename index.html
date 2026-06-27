@@ -1029,15 +1029,29 @@
                 if (!file) return;
                 var reader = new FileReader();
                 reader.onload = function() {
-                    var base64 = reader.result;
-                    var textarea = document.getElementById('noteContent');
-                    var start = textarea.selectionStart;
-                    var text = textarea.value;
-                    var insert = '\n![image](' + base64 + ')\n';
-                    textarea.value = text.substring(0, start) + insert + text.substring(start);
-                    textarea.focus();
-                    textarea.selectionStart = textarea.selectionEnd = start + insert.length;
-                    autoSave();
+                    var img = new Image();
+                    img.onload = function() {
+                        var canvas = document.createElement('canvas');
+                        var MAX = 1200;
+                        var w = img.width, h = img.height;
+                        if (w > MAX || h > MAX) {
+                            if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+                            else { w = Math.round(w * MAX / h); h = MAX; }
+                        }
+                        canvas.width = w;
+                        canvas.height = h;
+                        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                        var base64 = canvas.toDataURL('image/jpeg', 0.85);
+                        var textarea = document.getElementById('noteContent');
+                        var start = textarea.selectionStart;
+                        var text = textarea.value;
+                        var insert = '\n![image](data:image/jpeg;base64,' + base64.substring(base64.indexOf(',') + 1) + ')\n';
+                        textarea.value = text.substring(0, start) + insert + text.substring(start);
+                        textarea.focus();
+                        textarea.selectionStart = textarea.selectionEnd = start + insert.length;
+                        autoSave();
+                    };
+                    img.src = reader.result;
                 };
                 reader.readAsDataURL(file);
             };
@@ -1292,8 +1306,8 @@
                 var selected = selectedNotes.has(note.id) ? 'selected' : '';
                 var star = note.starred ? '<span class="star-indicator">⭐</span>' : '';
                 var itemClass = 'note-item ' + active + ' ' + selected;
-                var eventAttr = isSelecting ? '' : 'onclick="loadNote(\'' + note.id + '\')"';
-                return '<div class="' + itemClass + '" ' + eventAttr +
+                var clickAttr = isSelecting ? 'onclick="toggleSelect(\'' + note.id + '\')"' : 'onclick="loadNote(\'' + note.id + '\')"';
+                return '<div class="' + itemClass + '" ' + clickAttr +
                     ' onmousedown="startLongPress(\'' + note.id + '\', this)" ' +
                     ' ontouchstart="startLongPress(\'' + note.id + '\', this)" ' +
                     ' onmouseup="cancelLongPress()" ' +

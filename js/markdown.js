@@ -13,11 +13,13 @@ class MarkdownParser {
 
     isSafeUrl(url) {
         try {
+            // 允许 data:image 内嵌图片
+            if (url.startsWith('data:image')) return true;
             // 处理相对路径
             const absolute = url.startsWith('./') || url.startsWith('../') || url.startsWith('/') 
                 ? new URL(url, location.origin) 
                 : new URL(url);
-            const blocked = ['javascript:', 'vbscript:', 'data:', 'blob:'];
+            const blocked = ['javascript:', 'vbscript:', 'blob:'];
             return !blocked.some(p => absolute.protocol.startsWith(p));
         } catch {
             // 无法解析的 URL，拒绝
@@ -124,6 +126,10 @@ class MarkdownParser {
 
         // 处理段落
         html = html.split('\n\n').map(p => {
+            // 放行 HTML 标签（单行或块级）
+            if (/<[a-z][^>]*>.*<\/[^>]+>/is.test(p.trim()) || /^<[a-z][^>]*\/>$/i.test(p.trim())) {
+                return p;
+            }
             if (p.startsWith('<h') || p.startsWith('<pre') || p.startsWith('<blockquote') || 
                 p.startsWith('<ul') || p.startsWith('<table') || p.startsWith('<hr') || p.startsWith('<li')) {
                 return p;
