@@ -43,6 +43,91 @@
         .note-date { font-size: 11px; color: #adb5bd; }
         .note-item.active .note-date .note-date-text { color: rgba(255,255,255,0.8); }
 
+        /* 选择模式 */
+        .sidebar.selecting .note-item {
+            cursor: pointer;
+            padding-left: 0;
+        }
+        .note-checkbox {
+            display: none;
+            width: 18px;
+            height: 18px;
+            border: 2px solid var(--border, #dee2e6);
+            border-radius: 4px;
+            margin-right: 10px;
+            flex-shrink: 0;
+            align-items: center;
+            justify-content: center;
+            background: #fff;
+            transition: all 0.15s;
+        }
+        .sidebar.selecting .note-checkbox {
+            display: inline-flex;
+        }
+        .note-item.selected .note-checkbox {
+            background: #4a6cf7;
+            border-color: #4a6cf7;
+        }
+        .note-item.selected .note-checkbox::after {
+            content: '✓';
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .note-item-inner {
+            flex: 1;
+            min-width: 0;
+        }
+        .note-item {
+            display: flex;
+            align-items: center;
+        }
+        .selection-bar {
+            display: none;
+            padding: 10px 16px;
+            border-bottom: 1px solid #dee2e6;
+            background: #4a6cf7;
+            color: white;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .sidebar.selecting .selection-bar {
+            display: flex;
+        }
+        .selection-bar .sel-count {
+            font-size: 13px;
+            font-weight: 500;
+        }
+        .selection-bar .sel-actions {
+            display: flex;
+            gap: 8px;
+        }
+        .selection-bar button {
+            padding: 5px 12px;
+            border: 1px solid rgba(255,255,255,0.4);
+            border-radius: 4px;
+            background: transparent;
+            color: white;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .selection-bar button:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        .selection-bar button.danger:hover {
+            background: #ef4444;
+            border-color: #ef4444;
+        }
+        [data-theme="dark"] .sidebar.selecting .note-checkbox {
+            background: #1a1a2e;
+            border-color: #2d3748;
+        }
+        [data-theme="dark"] .note-item.selected .note-checkbox {
+            background: #4a6cf7;
+            border-color: #4a6cf7;
+        }
+
         /* 编辑器 */
         .editor { flex: 1; display: flex; flex-direction: column; min-width: 0; }
         .editor-header { padding: 12px 24px; border-bottom: 1px solid #dee2e6; display: flex; justify-content: space-between; align-items: center; }
@@ -154,7 +239,6 @@
                 <div class="filter-tabs">
                     <button class="tab active" onclick="switchFilter('all', this)">全部</button>
                     <button class="tab" onclick="switchFilter('starred', this)">⭐</button>
-                    <button class="tab" onclick="switchFilter('trash', this)">🗑️</button>
                 </div>
                 <select class="sort-select" id="sortSelect" onchange="renderNoteList()">
                     <option value="updated">按修改时间</option>
@@ -162,6 +246,20 @@
                     <option value="title-asc">按标题 A-Z</option>
                     <option value="title-desc">按标题 Z-A</option>
                 </select>
+            </div>
+            <div id="selectionBar" class="selection-bar">
+                <span class="sel-count" id="selCount">已选 0 篇</span>
+                <div class="sel-actions">
+                    <button onclick="exitSelectionMode()">取消</button>
+                    <button class="danger" onclick="batchDelete()">🗑️ 删除</button>
+                </div>
+            </div>
+            <div id="selectionBar" class="selection-bar">
+                <span class="sel-count" id="selCount">已选 0 篇</span>
+                <div class="sel-actions">
+                    <button onclick="exitSelectionMode()">取消</button>
+                    <button class="danger" onclick="batchDelete()">🗑️ 删除</button>
+                </div>
             </div>
             <div id="noteList" class="note-list">
                 <div style="text-align:center;padding:40px 20px;color:#adb5bd;font-size:14px">暂无笔记</div>
@@ -175,7 +273,6 @@
                     <button id="saveNote" title="保存 (Ctrl+S)">💾</button>
                     <button id="printNote" title="打印 (Ctrl+P)">🖨️</button>
                     <button id="toggleStar" title="收藏">☆</button>
-                    <button id="deleteNote" title="删除">🗑️</button>
                     <button id="exportNote" title="导出">📤</button>
                 </div>
             </div>
@@ -235,6 +332,10 @@
         let autoSaveTimer = null;
         let currentFilter = 'all';
         let deferredInstallPrompt = null;
+        let selectedNotes = new Set();
+        let longPressTimer = null;
+        let longPressTarget = null;
+        let isSelecting = false;
 
         // ============ 初始化 ============
         function init() {
@@ -283,7 +384,6 @@
             document.getElementById('noteContent').addEventListener('input', function() { autoSave(); updateWordCount(); });
             document.getElementById('saveNote').addEventListener('click', saveCurrentNote);
             document.getElementById('toggleStar').addEventListener('click', toggleStar);
-            document.getElementById('deleteNote').addEventListener('click', deleteNote);
             document.getElementById('exportNote').addEventListener('click', exportNote);
             document.getElementById('printNote').addEventListener('click', printNote);
 
@@ -365,10 +465,58 @@
         }
 
         function loadNote(id) {
+            if (isSelecting) {
+                toggleSelect(id);
+                return;
+            }
             if (currentNote) saveCurrentNote();
             const notes = getNotes();
             const note = notes.find(function(n) { return n.id === id; });
             if (note) { currentNote = note; renderEditor(); renderNoteList(); }
+        }
+
+        // ============ 选择模式 ============
+        function enterSelectionMode(id) {
+            isSelecting = true;
+            selectedNotes.add(id);
+            document.querySelector('.sidebar').classList.add('selecting');
+            updateSelectionBar();
+            renderNoteList();
+        }
+
+        function exitSelectionMode() {
+            isSelecting = false;
+            selectedNotes.clear();
+            document.querySelector('.sidebar').classList.remove('selecting');
+            renderNoteList();
+        }
+
+        function toggleSelect(id) {
+            if (selectedNotes.has(id)) {
+                selectedNotes.delete(id);
+            } else {
+                selectedNotes.add(id);
+            }
+            updateSelectionBar();
+            renderNoteList();
+        }
+
+        function updateSelectionBar() {
+            document.getElementById('selCount').textContent = '已选 ' + selectedNotes.size + ' 篇';
+        }
+
+        function batchDelete() {
+            if (selectedNotes.size === 0) return;
+            if (!confirm('确定要删除选中的 ' + selectedNotes.size + ' 篇笔记吗？')) return;
+            var notes = getNotes();
+            notes = notes.filter(function(n) { return !selectedNotes.has(n.id); });
+            saveNotes(notes);
+            if (currentNote && selectedNotes.has(currentNote.id)) {
+                currentNote = null;
+                renderEditor();
+            }
+            exitSelectionMode();
+            renderNoteList();
         }
 
         // ============ 编辑器渲染 ============
@@ -725,7 +873,6 @@
 
             if (currentFilter === 'all') notes = notes.filter(function(n) { return !n.deleted; });
             else if (currentFilter === 'starred') notes = notes.filter(function(n) { return n.starred && !n.deleted; });
-            else if (currentFilter === 'trash') notes = notes.filter(function(n) { return n.deleted; });
 
             if (keyword) {
                 var lower = keyword.toLowerCase();
