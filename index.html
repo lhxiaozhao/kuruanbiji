@@ -19,6 +19,10 @@
         .sidebar-header h1 { font-size: 16px; font-weight: 600; }
         #newNote { width: 32px; height: 32px; border: none; border-radius: 6px; background: #4a6cf7; color: white; font-size: 18px; cursor: pointer; flex-shrink: 0; }
         #newNote:hover { background: #3a56d4; }
+        #templateBtn { width: 32px; height: 32px; border: none; border-radius: 6px; background: #f8f9fa; color: #6c757d; font-size: 14px; cursor: pointer; flex-shrink: 0; }
+        #templateBtn:hover { background: #4a6cf7; color: white; }
+        [data-theme="dark"] #templateBtn { background: #16213e; color: #adb5bd; }
+        [data-theme="dark"] #templateBtn:hover { background: #4a6cf7; color: white; }
 
         .search-box { padding: 12px 16px; border-bottom: 1px solid #dee2e6; }
         #searchInput { width: 100%; padding: 8px 12px; border: 1px solid #dee2e6; border-radius: 6px; font-size: 14px; outline: none; }
@@ -336,6 +340,7 @@
                 <div style="display:flex;gap:6px;flex-shrink:0">
                     <button id="themeToggle" class="theme-toggle" title="切换主题">☀️</button>
                     <button id="importNote" title="导入">📥</button>
+                    <button id="templateBtn" title="模板">📋</button>
                     <button id="newNote">+</button>
                 </div>
             </div>
@@ -507,6 +512,7 @@
         function bindEvents() {
             document.getElementById('themeToggle').addEventListener('click', toggleTheme);
             document.getElementById('newNote').addEventListener('click', createNewNote);
+            document.getElementById('templateBtn').addEventListener('click', showTemplatePicker);
             document.getElementById('importNote').addEventListener('click', importNote);
             document.getElementById('searchInput').addEventListener('input', function() { renderNoteList(); });
             document.getElementById('noteTitle').addEventListener('input', autoSave);
@@ -582,6 +588,52 @@
             document.querySelectorAll('.filter-tabs .tab').forEach(function(t) { t.classList.remove('active'); });
             el.classList.add('active');
             renderNoteList();
+        }
+
+        // ============ 笔记模板 ============
+        var NOTE_TEMPLATES = [
+            { id: 'blank', name: '📝 空白笔记', content: '' },
+            { id: 'meeting', name: '📋 会议纪要', content: '# 会议纪要\n\n**时间：** \n**地点：** \n**参会人：** \n\n## 议题\n\n1. \n2. \n3. \n\n## 决议\n\n- \n- \n\n## 待办事项\n\n- [ ] \n- [ ] \n' },
+            { id: 'project', name: '📊 项目计划', content: '# 项目计划\n\n**项目名称：** \n**负责人：** \n**开始时间：** \n**截止时间：** \n\n## 项目背景\n\n## 目标\n\n## 任务分解\n\n| 任务 | 负责人 | 截止日期 | 状态 |\n|------|--------|----------|------|\n| | | | |\n\n## 风险点\n\n## 备注\n' },
+            { id: 'study', name: '📖 学习笔记', content: '# 学习笔记\n\n**主题：** \n**日期：** \n**来源：** \n\n## 核心概念\n\n## 重点内容\n\n## 疑问点\n\n## 总结\n\n## 参考资料\n\n- \n- \n' },
+            { id: 'todo', name: '✅ 待办清单', content: '# 待办清单\n\n## 今日任务\n\n- [ ] \n- [ ] \n- [ ] \n\n## 本周任务\n\n- [ ] \n- [ ] \n\n## 本月任务\n\n- [ ] \n- [ ] \n' },
+            { id: 'review', name: '📝 需求文档', content: '# 需求文档\n\n**项目名称：** \n**版本号：** \n**日期：** \n\n## 项目概述\n\n## 功能需求\n\n### 功能1\n\n**需求描述：** \n**优先级：** \n**验收标准：** \n\n### 功能2\n\n**需求描述：** \n**优先级：** \n**验收标准：** \n\n## 非功能需求\n\n## 技术约束\n\n## 附录\n' }
+        ];
+
+        function showTemplatePicker() {
+            var modal = document.createElement('div');
+            modal.className = 'export-modal show';
+            modal.innerHTML = '<div class="export-modal-content"><h3>选择模板</h3>' +
+                NOTE_TEMPLATES.map(function(t) {
+                    return '<button onclick="createNoteFromTemplate(\'' + t.id + '\')">' + t.name + '</button>';
+                }).join('') +
+                '<button class="export-cancel" onclick="this.closest(\'.export-modal\').remove()">取消</button></div>';
+            document.body.appendChild(modal);
+        }
+
+        function createNoteFromTemplate(templateId) {
+            var template = NOTE_TEMPLATES.find(function(t) { return t.id === templateId; });
+            if (!template) return;
+            if (currentNote) saveCurrentNote();
+            var note = {
+                id: generateId(),
+                title: template.name.split(' ').slice(1).join(' '),
+                content: template.content,
+                starred: false,
+                deleted: false,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+            var notes = getNotes();
+            notes.push(note);
+            saveNotes(notes);
+            currentNote = note;
+            renderEditor();
+            renderNoteList();
+            document.getElementById('noteTitle').focus();
+            // 关闭模板弹窗
+            var modal = document.querySelector('.export-modal.show');
+            if (modal) modal.remove();
         }
 
         // ============ 笔记操作 ============
