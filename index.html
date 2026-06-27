@@ -567,6 +567,7 @@
                 </div>
                 <div class="footer-right">
                     <span id="wordCount">0 字</span>
+                    <button id="statsBtn" title="统计">📊</button>
                 </div>
             </div>
         </main>
@@ -884,6 +885,7 @@
             document.getElementById('exportNote').addEventListener('click', openExportModal);
             document.getElementById('printNote').addEventListener('click', printNote);
             document.getElementById('versionHistoryBtn').addEventListener('click', openVersionHistory);
+            document.getElementById('statsBtn').addEventListener('click', openStatsModal);
 
             // 查找替换输入监听
             document.getElementById('findInput').addEventListener('input', doFind);
@@ -1343,6 +1345,62 @@
             // 关闭版本历史弹窗
             var modal = document.querySelector('.export-modal.show');
             if (modal) modal.remove();
+        }
+
+        // ============ 统计看板 ============
+        function openStatsModal() {
+            var notes = getNotes();
+            var totalNotes = notes.filter(function(n) { return !n.deleted; }).length;
+            var totalTrash = notes.filter(function(n) { return n.deleted; }).length;
+            var totalWords = 0;
+            var totalChars = 0;
+            var totalLines = 0;
+            var categories = {};
+            var folders = {};
+            var tags = {};
+            var thisWeekNotes = 0;
+            var thisMonthNotes = 0;
+            var now = new Date();
+            var weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            var monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+            notes.forEach(function(n) {
+                if (n.deleted) return;
+                var content = n.content || '';
+                totalChars += content.length;
+                totalWords += content.trim() ? content.trim().split(/\s+/).length : 0;
+                totalLines += content ? content.split('\n').length : 0;
+
+                if (n.category) categories[n.category] = (categories[n.category] || 0) + 1;
+                if (n.folder) folders[n.folder] = (folders[n.folder] || 0) + 1;
+
+                var tags = n.tags || [];
+                tags.forEach(function(t) { tags[t] = (tags[t] || 0) + 1; });
+
+                var createdAt = new Date(n.createdAt);
+                if (createdAt >= weekStart) thisWeekNotes++;
+                if (createdAt >= monthStart) thisMonthNotes++;
+            });
+
+            var modal = document.createElement('div');
+            modal.className = 'export-modal show';
+            modal.innerHTML = '<div class="export-modal-content"><h3>📊 笔记统计</h3>' +
+                '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0">' +
+                '<div style="background:#f8f9fa;padding:16px;border-radius:8px;text-align:center"><div style="font-size:24px;font-weight:600;color:#4a6cf7">' + totalNotes + '</div><div style="font-size:12px;color:#6c757d">笔记总数</div></div>' +
+                '<div style="background:#f8f9fa;padding:16px;border-radius:8px;text-align:center"><div style="font-size:24px;font-weight:600;color:#28a745">' + totalChars + '</div><div style="font-size:12px;color:#6c757d">总字数</div></div>' +
+                '<div style="background:#f8f9fa;padding:16px;border-radius:8px;text-align:center"><div style="font-size:24px;font-weight:600;color:#fd7e14">' + thisWeekNotes + '</div><div style="font-size:12px;color:#6c757d">本周笔记</div></div>' +
+                '<div style="background:#f8f9fa;padding:16px;border-radius:8px;text-align:center"><div style="font-size:24px;font-weight:600;color:#6f42c1">' + thisMonthNotes + '</div><div style="font-size:12px;color:#6c757d">本月笔记</div></div>' +
+                '</div>' +
+                '<div style="margin-bottom:16px"><h4 style="font-size:14px;margin-bottom:8px">分类分布</h4>' +
+                Object.keys(categories).sort(function(a,b) { return categories[b] - categories[a]; }).map(function(c) {
+                    return '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px"><span>' + c + '</span><span style="color:#6c757d">' + categories[c] + '</span></div>';
+                }).join('') + '</div>' +
+                '<div style="margin-bottom:16px"><h4 style="font-size:14px;margin-bottom:8px">文件夹分布</h4>' +
+                Object.keys(folders).sort(function(a,b) { return folders[b] - folders[a]; }).map(function(f) {
+                    return '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px"><span>' + f + '</span><span style="color:#6c757d">' + folders[f] + '</span></div>';
+                }).join('') + '</div>' +
+                '<button class="export-cancel" onclick="this.closest(\'.export-modal\').remove()">关闭</button></div>';
+            document.body.appendChild(modal);
         }
 
         function updateLastSaved() {
