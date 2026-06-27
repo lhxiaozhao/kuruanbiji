@@ -1400,12 +1400,13 @@
             var totalLines = 0;
             var categories = {};
             var folders = {};
-            var tags = {};
+            var tagMap = {};
             var thisWeekNotes = 0;
             var thisMonthNotes = 0;
             var now = new Date();
             var weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
             var monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+            var monthlyData = {};
 
             notes.forEach(function(n) {
                 if (n.deleted) return;
@@ -1417,31 +1418,69 @@
                 if (n.category) categories[n.category] = (categories[n.category] || 0) + 1;
                 if (n.folder) folders[n.folder] = (folders[n.folder] || 0) + 1;
 
-                var tags = n.tags || [];
-                tags.forEach(function(t) { tags[t] = (tags[t] || 0) + 1; });
+                var tags = extractTags(n.content);
+                tags.forEach(function(t) { tagMap[t] = (tagMap[t] || 0) + 1; });
 
                 var createdAt = new Date(n.createdAt);
                 if (createdAt >= weekStart) thisWeekNotes++;
                 if (createdAt >= monthStart) thisMonthNotes++;
+
+                var monthKey = createdAt.getFullYear() + '-' + String(createdAt.getMonth() + 1).padStart(2, '0');
+                monthlyData[monthKey] = (monthlyData[monthKey] || 0) + 1;
             });
+
+            // 月度趋势数据
+            var months = Object.keys(monthlyData).sort();
+            var maxMonthly = Math.max.apply(null, months.map(function(m) { return monthlyData[m]; })) || 1;
+            var monthlyBars = months.map(function(m) {
+                var width = (monthlyData[m] / maxMonthly) * 100;
+                return '<div style="display:flex;align-items:center;margin:4px 0;font-size:12px">' +
+                    '<span style="width:60px;color:#6c757d">' + m + '</span>' +
+                    '<div style="flex:1;background:#e9ecef;border-radius:4px;height:20px;margin:0 8px"><div style="width:' + width + '%;background:#4a6cf7;height:100%;border-radius:4px;transition:width 0.3s"></div></div>' +
+                    '<span style="color:#6c757d">' + monthlyData[m] + '</span>' +
+                    '</div>';
+            }).join('');
+
+            // 分类饼图（CSS 实现）
+            var categoryColors = ['#4a6cf7', '#28a745', '#fd7e14', '#6f42c1', '#dc3545', '#17a2b8'];
+            var categoryTotal = Object.values(categories).reduce(function(a, b) { return a + b; }, 0);
+            var categoryHtml = '';
+            if (categoryTotal > 0) {
+                var categoryItems = Object.keys(categories).sort(function(a, b) { return categories[b] - categories[a]; });
+                categoryItems.forEach(function(c, i) {
+                    var pct = Math.round((categories[c] / categoryTotal) * 100);
+                    categoryHtml += '<div style="display:flex;align-items:center;margin:4px 0;font-size:12px">' +
+                        '<span style="width:12px;height:12px;border-radius:50%;background:' + categoryColors[i % categoryColors.length] + ';margin-right:8px"></span>' +
+                        '<span style="flex:1">' + c + '</span>' +
+                        '<span style="color:#6c757d">' + categories[c] + ' (' + pct + '%)</span>' +
+                        '</div>';
+                });
+            }
+
+            // 标签云（Top 10）
+            var topTags = Object.keys(tagMap).sort(function(a, b) { return tagMap[b] - tagMap[a]; }).slice(0, 10);
+            var maxTag = Math.max.apply(null, topTags.map(function(t) { return tagMap[t]; })) || 1;
+            var tagCloudHtml = topTags.map(function(t) {
+                var size = 12 + (tagMap[t] / maxTag) * 16;
+                return '<span style="font-size:' + size + 'px;color:#4a6cf7;cursor:pointer;margin:4px;display:inline-block">#' + t + '</span>';
+            }).join('');
 
             var modal = document.createElement('div');
             modal.className = 'export-modal show';
-            modal.innerHTML = '<div class="export-modal-content"><h3>📊 笔记统计</h3>' +
+            modal.innerHTML = '<div class="export-modal-content" style="max-width:600px"><h3>📊 笔记统计</h3>' +
                 '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0">' +
                 '<div style="background:#f8f9fa;padding:16px;border-radius:8px;text-align:center"><div style="font-size:24px;font-weight:600;color:#4a6cf7">' + totalNotes + '</div><div style="font-size:12px;color:#6c757d">笔记总数</div></div>' +
                 '<div style="background:#f8f9fa;padding:16px;border-radius:8px;text-align:center"><div style="font-size:24px;font-weight:600;color:#28a745">' + totalChars + '</div><div style="font-size:12px;color:#6c757d">总字数</div></div>' +
                 '<div style="background:#f8f9fa;padding:16px;border-radius:8px;text-align:center"><div style="font-size:24px;font-weight:600;color:#fd7e14">' + thisWeekNotes + '</div><div style="font-size:12px;color:#6c757d">本周笔记</div></div>' +
                 '<div style="background:#f8f9fa;padding:16px;border-radius:8px;text-align:center"><div style="font-size:24px;font-weight:600;color:#6f42c1">' + thisMonthNotes + '</div><div style="font-size:12px;color:#6c757d">本月笔记</div></div>' +
                 '</div>' +
-                '<div style="margin-bottom:16px"><h4 style="font-size:14px;margin-bottom:8px">分类分布</h4>' +
-                Object.keys(categories).sort(function(a,b) { return categories[b] - categories[a]; }).map(function(c) {
-                    return '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px"><span>' + c + '</span><span style="color:#6c757d">' + categories[c] + '</span></div>';
-                }).join('') + '</div>' +
+                '<div style="margin-bottom:16px"><h4 style="font-size:14px;margin-bottom:8px">月度趋势</h4>' + monthlyBars + '</div>' +
+                '<div style="margin-bottom:16px"><h4 style="font-size:14px;margin-bottom:8px">分类分布</h4>' + categoryHtml + '</div>' +
                 '<div style="margin-bottom:16px"><h4 style="font-size:14px;margin-bottom:8px">文件夹分布</h4>' +
                 Object.keys(folders).sort(function(a,b) { return folders[b] - folders[a]; }).map(function(f) {
                     return '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px"><span>' + f + '</span><span style="color:#6c757d">' + folders[f] + '</span></div>';
                 }).join('') + '</div>' +
+                '<div style="margin-bottom:16px"><h4 style="font-size:14px;margin-bottom:8px">热门标签</h4><div>' + tagCloudHtml + '</div></div>' +
                 '<button class="export-cancel" onclick="this.closest(\'.export-modal\').remove()">关闭</button></div>';
             document.body.appendChild(modal);
         }
