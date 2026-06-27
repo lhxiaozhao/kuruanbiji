@@ -581,6 +581,7 @@
             <button onclick="exportAs('txt')">📝 纯文本 (.txt)</button>
             <button onclick="exportAs('pdf')">📑 PDF</button>
             <button onclick="shareNote()">🔗 分享链接</button>
+            <button onclick="exportAs('wechat')">📱 公众号文章</button>
             <button class="export-cancel" onclick="closeExportModal()">取消</button>
         </div>
     </div>
@@ -1904,6 +1905,14 @@
                     setTimeout(function() { printWindow.print(); }, 500);
                     closeExportModal();
                     return;
+                case 'wechat':
+                    // 导出为公众号文章格式
+                    var wechatHtml = generateWeChatArticle(title, currentNote.content);
+                    var printWindow = window.open('', '_blank');
+                    printWindow.document.write(wechatHtml);
+                    printWindow.document.close();
+                    closeExportModal();
+                    return;
             }
 
             var blob = new Blob([content], { type: mime + ';charset=utf-8' });
@@ -1967,6 +1976,39 @@
             shareBanner.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#4a6cf7;color:white;padding:12px 24px;border-radius:8px;font-size:14px;z-index:1000';
             shareBanner.innerHTML = '👀 查看模式 · <a href="' + window.location.pathname + '" style="color:white;text-decoration:underline">返回主页</a>';
             document.body.appendChild(shareBanner);
+        }
+
+        function generateWeChatArticle(title, content) {
+            var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + escapeHtml(title) + '</title>' +
+                '<style>' +
+                'body{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;max-width:680px;margin:0 auto;padding:20px;line-height:1.8;color:#333;font-size:16px}' +
+                'h1{font-size:22px;font-weight:600;margin:24px 0 16px;text-align:center;color:#333}' +
+                'h2{font-size:18px;font-weight:600;margin:20px 0 12px;color:#333;border-left:4px solid #f77f00;padding-left:12px}' +
+                'h3{font-size:16px;font-weight:600;margin:16px 0 8px;color:#333}' +
+                'p{margin:12px 0}' +
+                'strong{font-weight:600;color:#333}' +
+                'em{font-style:italic;color:#666}' +
+                'blockquote{border-left:4px solid #f77f00;padding:8px 16px;margin:16px 0;background:#fff8f0;color:#666}' +
+                'code{background:#f5f5f5;padding:2px 6px;border-radius:3px;font-size:14px;color:#e83e8c}' +
+                'pre{background:#2d3748;color:#e9ecef;padding:16px;border-radius:6px;overflow-x:auto;font-size:14px;line-height:1.6}' +
+                'pre code{background:transparent;color:inherit;padding:0}' +
+                'table{border-collapse:collapse;width:100%;margin:16px 0;font-size:14px}' +
+                'th,td{border:1px solid #e5e5e5;padding:8px 12px;text-align:left}' +
+                'th{background:#f7f7f7;font-weight:600}' +
+                'img{max-width:100%;height:auto;display:block;margin:16px auto}' +
+                'ul,ol{padding-left:24px;margin:12px 0}' +
+                'li{margin:6px 0}' +
+                'hr{border:none;border-top:1px solid #e5e5e5;margin:20px 0}' +
+                'a{color:#576b95;text-decoration:none}' +
+                '.task-list{list-style:none;padding-left:0}' +
+                '.task-list li{position:relative;padding-left:24px}' +
+                '.task-list li:before{content:"±0";position:absolute;left:0;color:#999}' +
+                '.task-list li.checked:before{content:"±1";color:#52c41a}' +
+                '</style></head><body>' +
+                '<h1>' + escapeHtml(title) + '</h1>' +
+                '<div>' + parseMarkdown(content, null) + '</div>' +
+                '</body></html>';
+            return html;
         }
 
         function insertImage() {
