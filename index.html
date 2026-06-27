@@ -14,13 +14,16 @@
         .app { display: flex; height: 100vh; }
 
         /* 侧边栏 */
-        .sidebar { width: 280px; background: #f8f9fa; border-right: 1px solid #dee2e6; display: flex; flex-direction: column; }
+        .sidebar { width: 280px; background: #f8f9fa; border-right: 1px solid #dee2e6; display: flex; flex-direction: column; transition: width 0.3s, transform 0.3s; flex-shrink: 0; }
+        .sidebar.collapsed { width: 0; overflow: hidden; }
         .sidebar-header { padding: 16px; border-bottom: 1px solid #dee2e6; display: flex; justify-content: space-between; align-items: center; }
         .sidebar-header h1 { font-size: 16px; font-weight: 600; }
         #newNote { width: 32px; height: 32px; border: none; border-radius: 6px; background: #4a6cf7; color: white; font-size: 18px; cursor: pointer; flex-shrink: 0; }
         #newNote:hover { background: #3a56d4; }
         #templateBtn { width: 32px; height: 32px; border: none; border-radius: 6px; background: #f8f9fa; color: #6c757d; font-size: 14px; cursor: pointer; flex-shrink: 0; }
         #templateBtn:hover { background: #4a6cf7; color: white; }
+        #toggleSidebar { width: 32px; height: 32px; border: none; border-radius: 6px; background: #f8f9fa; color: #6c757d; font-size: 14px; cursor: pointer; flex-shrink: 0; }
+        #toggleSidebar:hover { background: #4a6cf7; color: white; }
         [data-theme="dark"] #templateBtn { background: #16213e; color: #adb5bd; }
         [data-theme="dark"] #templateBtn:hover { background: #4a6cf7; color: white; }
 
@@ -133,7 +136,8 @@
         }
 
         /* 编辑器 */
-        .editor { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+        .editor { flex: 1; display: flex; flex-direction: column; min-width: 0; transition: margin-left 0.3s; }
+        .editor.expanded { margin-left: 0; }
         .editor-header { padding: 12px 24px; border-bottom: 1px solid #dee2e6; display: flex; justify-content: space-between; align-items: center; }
         #noteTitle { flex: 1; padding: 8px 12px; border: 1px solid #dee2e6; border-radius: 6px; font-size: 16px; font-weight: 500; outline: none; margin-right: 12px; min-width: 0; }
         #noteTitle:focus { border-color: #4a6cf7; }
@@ -341,6 +345,7 @@
                     <button id="themeToggle" class="theme-toggle" title="切换主题">☀️</button>
                     <button id="importNote" title="导入">📥</button>
                     <button id="templateBtn" title="模板">📋</button>
+                    <button id="toggleSidebar" title="折叠侧边栏">←</button>
                     <button id="newNote">+</button>
                 </div>
             </div>
@@ -513,6 +518,7 @@
             document.getElementById('themeToggle').addEventListener('click', toggleTheme);
             document.getElementById('newNote').addEventListener('click', createNewNote);
             document.getElementById('templateBtn').addEventListener('click', showTemplatePicker);
+            document.getElementById('toggleSidebar').addEventListener('click', toggleSidebar);
             document.getElementById('importNote').addEventListener('click', importNote);
             document.getElementById('searchInput').addEventListener('input', function() { renderNoteList(); });
             document.getElementById('noteTitle').addEventListener('input', autoSave);
@@ -580,6 +586,16 @@
             document.getElementById('themeToggle').textContent = next === 'dark' ? '🌙' : '☀️';
             // 主题切换时更新预览区
             var preview = document.getElementById('preview');
+        }
+
+        // ============ 侧边栏折叠 ============
+        function toggleSidebar() {
+            var sidebar = document.querySelector('.sidebar');
+            var editor = document.querySelector('.editor');
+            sidebar.classList.toggle('collapsed');
+            editor.classList.toggle('expanded');
+            var btn = document.getElementById('toggleSidebar');
+            btn.textContent = sidebar.classList.contains('collapsed') ? '→' : '←';
         }
 
         // ============ 筛选 ============
@@ -1274,6 +1290,25 @@
                     '<div class="note-preview">' + (preview || '空笔记') + '</div>' +
                     '<div class="note-date">' + date + '</div></div>';
             }).join('');
+        }
+
+        // ============ 长按检测 ============
+        function startLongPress(id, el) {
+            if (isSelecting) return;
+            longPressTarget = id;
+            longPressTimer = setTimeout(function() {
+                longPressTimer = null;
+                enterSelectionMode(id);
+                if (navigator.vibrate) navigator.vibrate(50);
+            }, 500);
+        }
+
+        function cancelLongPress() {
+            if (longPressTimer) {
+                clearTimeout(longPressTimer);
+                longPressTimer = null;
+                longPressTarget = null;
+            }
         }
 
         // ============ 启动 ============
