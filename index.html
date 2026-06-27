@@ -365,6 +365,8 @@
         [data-theme="dark"] #preview .mermaid { background: #16213e; }
         [data-theme="dark"] #tagCloud { background: #16213e; border-color: #2d3748; }
         [data-theme="dark"] #tagCloud span:first-child { color: #adb5bd; }
+        [data-theme="dark"] #folderTree { background: #16213e; border-color: #2d3748; }
+        [data-theme="dark"] #folderTree span:first-child { color: #adb5bd; }
 
         /* 空状态 */
         .empty-state { text-align: center; padding: 40px 20px; color: #adb5bd; font-size: 14px; }
@@ -428,6 +430,11 @@
                     <button id="clearTrashBtn" class="trash-clear-btn" onclick="clearTrash()" title="清空回收站">🗑️</button>
                 </div>
             </div>
+            <!-- 文件夹树 -->
+            <div id="folderTree" class="folder-tree" style="display:none;padding:8px 16px;border-bottom:1px solid #dee2e6;font-size:12px">
+                <span style="color:#6c757d;margin-right:4px">文件夹:</span>
+                <span onclick="setFolderFilter('');renderNoteList();" style="cursor:pointer;color:#4a6cf7;margin-right:8px">全部</span>
+            </div>
             <div id="selectionBar" class="selection-bar">
                 <span class="sel-count" id="selCount">已选 0 篇</span>
                 <div class="sel-actions">
@@ -453,6 +460,9 @@
             <div class="editor-header">
                 <div style="display:flex;flex:1;align-items:center;gap:8px;min-width:0">
                     <input type="text" id="noteTitle" placeholder="笔记标题">
+                    <select id="noteFolder" class="category-select" onchange="setNoteFolder(this.value)">
+                        <option value="">未归档</option>
+                    </select>
                     <select id="noteCategory" class="category-select" onchange="changeCategory()">
                         <option value="">未分类</option>
                         <option value="工作">💼 工作</option>
@@ -954,6 +964,30 @@
             localStorage.setItem('tagFilter', tag);
         }
 
+        // ============ 文件夹 ============
+        function getFolderFilter() {
+            return localStorage.getItem('folderFilter') || '';
+        }
+        function setFolderFilter(folder) {
+            localStorage.setItem('folderFilter', folder);
+        }
+        function getFolders() {
+            var notes = getNotes();
+            notes = notes.filter(function(n) { return !n.deleted; });
+            var folders = {};
+            notes.forEach(function(n) {
+                if (n.folder) {
+                    folders[n.folder] = (folders[n.folder] || 0) + 1;
+                }
+            });
+            return Object.keys(folders).sort();
+        }
+        function setNoteFolder(folder) {
+            if (!currentNote) return;
+            currentNote.folder = folder;
+            saveCurrentNote();
+        }
+
         function createWelcomeNote() {
             const notes = getNotes();
             if (notes.length === 0) {
@@ -971,7 +1005,8 @@
 
         function createNewNote() {
             if (currentNote) saveCurrentNote();
-            const note = { id: generateId(), title: '', content: '', starred: false, deleted: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+            var folder = getFolderFilter();
+            const note = { id: generateId(), title: '', content: '', starred: false, deleted: false, folder: folder, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
             const notes = getNotes();
             notes.push(note);
             saveNotes(notes);
@@ -1074,6 +1109,12 @@
             if (pinBtn) pinBtn.style.color = currentNote.pinned ? '#f77f00' : '';
             var catSel = document.getElementById('noteCategory');
             if (catSel) catSel.value = currentNote.category || '';
+            var folderSel = document.getElementById('noteFolder');
+            if (folderSel) {
+                folderSel.innerHTML = '<option value="">未归档</option>' + getFolders().map(function(f) {
+                    return '<option value="' + f + '"' + (currentNote.folder === f ? ' selected' : '') + '>📁 ' + f + '</option>';
+                }).join('');
+            }
             if (lockBtn) lockBtn.textContent = currentNote.locked ? '🔒' : '🔓';
             updateWordCount();
             updateLastSaved();
@@ -1793,6 +1834,12 @@
                 notes = notes.filter(function(n) { return n.category === categoryFilter; });
             }
 
+            // 文件夹筛选
+            var folderFilter = getFolderFilter();
+            if (folderFilter) {
+                notes = notes.filter(function(n) { return n.folder === folderFilter; });
+            }
+
             // 标签筛选
             var tagFilter = getTagFilter();
             if (tagFilter) {
@@ -1857,6 +1904,7 @@
                     '<div class="note-date">' + date + '</div></div></div>';
             }).join('');
             renderTagCloud();
+            renderFolderTree();
         }
 
         // ============ 标签云 ============
@@ -1881,6 +1929,26 @@
                 tags.map(function(t) {
                     return '<span onclick="setTagFilter(\'' + t + '\');renderNoteList();" style="cursor:pointer;color:#4a6cf7;margin-right:8px">#' + t + ' (' + tagMap[t] + ')</span>';
                 }).join('');
+        }
+
+        function renderFolderTree() {
+            var folders = getFolders();
+            var tree = document.getElementById('folderTree');
+            if (!tree) return;
+            if (folders.length === 0) {
+                tree.style.display = 'none';
+                return;
+            }
+            tree.style.display = 'block';
+            var current = getFolderFilter();
+            var html = '<span style="color:#6c757d;margin-right:4px">文件夹:</span>';
+            html += '<span onclick="setFolderFilter(\'\');renderNoteList();" style="cursor:pointer;color:' + (!current ? '#4a6cf7' : '#6c757d') + ';margin-right:8px;font-weight:' + (!current ? 'bold' : 'normal') + '">全部</span>';
+            folders.forEach(function(f) {
+                var count = getNotes().filter(function(n) { return !n.deleted && n.folder === f; }).length;
+                var isActive = f === current;
+                html += '<span onclick="setFolderFilter(\'' + f + '\');renderNoteList();" style="cursor:pointer;color:' + (isActive ? '#4a6cf7' : '#6c757d') + ';margin-right:8px;font-weight:' + (isActive ? 'bold' : 'normal') + '">📁 ' + f + ' (' + count + ')</span>';
+            });
+            tree.innerHTML = html;
         }
 
         // ============ 长按检测 ============
