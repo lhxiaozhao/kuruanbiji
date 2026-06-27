@@ -517,6 +517,7 @@
                     <button id="printNote" title="打印 (Ctrl+P)">🖨️</button>
                     <button id="toggleStar" title="收藏">☆</button>
                     <button id="exportNote" title="导出">📤</button>
+                    <button id="versionHistoryBtn" title="版本历史">📜</button>
                 </div>
             </div>
 
@@ -872,6 +873,7 @@
             document.getElementById('lockNote').addEventListener('click', lockNote);
             document.getElementById('exportNote').addEventListener('click', openExportModal);
             document.getElementById('printNote').addEventListener('click', printNote);
+            document.getElementById('versionHistoryBtn').addEventListener('click', openVersionHistory);
 
             // 查找替换输入监听
             document.getElementById('findInput').addEventListener('input', doFind);
@@ -1262,9 +1264,75 @@
             currentNote.updatedAt = new Date().toISOString();
             const notes = getNotes();
             const index = notes.findIndex(function(n) { return n.id === currentNote.id; });
-            if (index !== -1) { notes[index] = currentNote; saveNotes(notes); }
+            if (index !== -1) {
+                notes[index] = currentNote;
+                // 创建版本快照
+                createVersionSnapshot(currentNote);
+                saveNotes(notes);
+            }
             updateLastSaved();
             renderNoteList();
+        }
+
+        // ============ 版本历史 ============
+        function createVersionSnapshot(note) {
+            if (!note.versions) note.versions = [];
+            // 避免重复保存相同内容
+            var lastVersion = note.versions[note.versions.length - 1];
+            if (lastVersion && lastVersion.content === note.content && lastVersion.title === note.title) return;
+            // 最多保留 50 个版本
+            if (note.versions.length >= 50) note.versions.shift();
+            note.versions.push({
+                id: Date.now().toString(),
+                title: note.title,
+                content: note.content,
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        function getVersionCount(note) {
+            return note.versions ? note.versions.length : 0;
+        }
+
+        function openVersionHistory() {
+            if (!currentNote) return;
+            var versions = currentNote.versions || [];
+            if (versions.length === 0) {
+                alert('暂无版本历史');
+                return;
+            }
+            var modal = document.createElement('div');
+            modal.className = 'export-modal show';
+            modal.innerHTML = '<div class="export-modal-content"><h3>📜 版本历史 (' + versions.length + ' 个版本)</h3>' +
+                versions.slice().reverse().map(function(v) {
+                    var time = new Date(v.timestamp).toLocaleString('zh-CN');
+                    var preview = v.content.substring(0, 50).replace(/\n/g, ' ');
+                    return '<div style="padding:12px;border:1px solid #dee2e6;border-radius:8px;margin-bottom:8px;cursor:pointer" onclick="restoreVersion(\'' + v.id + '\')">' +
+                        '<div style="font-weight:500">' + escapeHtml(v.title || '无标题') + '</div>' +
+                        '<div style="font-size:12px;color:#6c757d;margin-top:4px">' + time + '</div>' +
+                        '<div style="font-size:12px;color:#adb5bd;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + escapeHtml(preview) + '</div>' +
+                        '</div>';
+                }).join('') +
+                '<button class="export-cancel" onclick="this.closest(\'.export-modal\').remove()">关闭</button></div>';
+            document.body.appendChild(modal);
+        }
+
+        function restoreVersion(versionId) {
+            if (!currentNote || !currentNote.versions) return;
+            var version = currentNote.versions.find(function(v) { return v.id === versionId; });
+            if (!version) return;
+            if (!confirm('确定要恢复到这个版本吗？当前内容将丢失。')) return;
+            currentNote.title = version.title;
+            currentNote.content = version.content;
+            currentNote.updatedAt = new Date().toISOString();
+            document.getElementById('noteTitle').value = currentNote.title;
+            document.getElementById('noteContent').value = currentNote.content;
+            autoSave();
+            updatePreview();
+            updateWordCount();
+            // 关闭版本历史弹窗
+            var modal = document.querySelector('.export-modal.show');
+            if (modal) modal.remove();
         }
 
         function updateLastSaved() {
