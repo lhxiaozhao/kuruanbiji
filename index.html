@@ -40,6 +40,9 @@
         .tab.active { background: #4a6cf7; color: white; }
         .tab:hover:not(.active) { background: #e9ecef; }
         .sort-select { font-size: 11px; padding: 3px 6px; border: 1px solid #dee2e6; border-radius: 4px; background: #fff; color: #6c757d; cursor: pointer; outline: none; }
+        .trash-clear-btn { padding: 3px 8px; border: 1px solid #dee2e6; border-radius: 4px; background: #fff; cursor: pointer; font-size: 12px; color: #dc3545; display: none; }
+        .trash-clear-btn:hover { background: #dc3545; color: white; border-color: #dc3545; }
+        [data-theme="dark"] .trash-clear-btn { background: #1a1a2e; color: #dc3545; border-color: #2d3748; }
 
         .note-list { flex: 1; overflow-y: auto; padding: 8px; }
         .note-item { padding: 12px; margin-bottom: 4px; border-radius: 6px; cursor: pointer; transition: background 0.15s; }
@@ -49,6 +52,7 @@
         .note-item.active .note-date { color: rgba(255,255,255,0.8); }
         .note-title { font-size: 14px; font-weight: 500; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .note-title .star-indicator { margin-right: 4px; }
+        .note-title .pin-indicator { margin-right: 4px; }
         .note-preview { font-size: 12px; color: #6c757d; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px; }
         .note-date { font-size: 11px; color: #adb5bd; }
         .note-item.active .note-date .note-date-text { color: rgba(255,255,255,0.8); }
@@ -359,13 +363,17 @@
                 <div class="filter-tabs">
                     <button class="tab active" onclick="switchFilter('all', this)">全部</button>
                     <button class="tab" onclick="switchFilter('starred', this)">⭐</button>
+                    <button class="tab" onclick="switchFilter('trash', this)">🗑️</button>
                 </div>
-                <select class="sort-select" id="sortSelect" onchange="renderNoteList()">
-                    <option value="updated">按修改时间</option>
-                    <option value="created">按创建时间</option>
-                    <option value="title-asc">按标题 A-Z</option>
-                    <option value="title-desc">按标题 Z-A</option>
-                </select>
+                <div style="display:flex;gap:4px;align-items:center">
+                    <select class="sort-select" id="sortSelect" onchange="renderNoteList()">
+                        <option value="updated">按修改时间</option>
+                        <option value="created">按创建时间</option>
+                        <option value="title-asc">按标题 A-Z</option>
+                        <option value="title-desc">按标题 Z-A</option>
+                    </select>
+                    <button id="clearTrashBtn" class="trash-clear-btn" onclick="clearTrash()" title="清空回收站">🗑️</button>
+                </div>
             </div>
             <div id="selectionBar" class="selection-bar">
                 <span class="sel-count" id="selCount">已选 0 篇</span>
@@ -388,6 +396,7 @@
             <div class="editor-header">
                 <input type="text" id="noteTitle" placeholder="笔记标题">
                 <div class="editor-actions">
+                    <button id="pinNote" title="置顶">📌</button>
                     <button id="saveNote" title="保存 (Ctrl+S)">💾</button>
                     <button id="printNote" title="打印 (Ctrl+P)">🖨️</button>
                     <button id="toggleStar" title="收藏">☆</button>
@@ -530,6 +539,7 @@
             document.getElementById('noteContent').addEventListener('input', function() { autoSave(); updateWordCount(); });
             document.getElementById('saveNote').addEventListener('click', saveCurrentNote);
             document.getElementById('toggleStar').addEventListener('click', toggleStar);
+            document.getElementById('pinNote').addEventListener('click', pinNote);
             document.getElementById('exportNote').addEventListener('click', openExportModal);
             document.getElementById('printNote').addEventListener('click', printNote);
 
@@ -608,6 +618,8 @@
             currentFilter = filter;
             document.querySelectorAll('.filter-tabs .tab').forEach(function(t) { t.classList.remove('active'); });
             el.classList.add('active');
+            var clearBtn = document.getElementById('clearTrashBtn');
+            if (clearBtn) clearBtn.style.display = filter === 'trash' ? 'inline-block' : 'none';
             renderNoteList();
         }
 
@@ -697,7 +709,15 @@
             if (currentNote) saveCurrentNote();
             const notes = getNotes();
             const note = notes.find(function(n) { return n.id === id; });
-            if (note) { currentNote = note; renderEditor(); renderNoteList(); }
+            if (note) {
+                if (note.deleted) {
+                    restoreNote(id);
+                } else {
+                    currentNote = note;
+                    renderEditor();
+                    renderNoteList();
+                }
+            }
         }
 
         // ============ 选择模式 ============
@@ -732,9 +752,16 @@
 
         function batchDelete() {
             if (selectedNotes.size === 0) return;
-            if (!confirm('确定要删除选中的 ' + selectedNotes.size + ' 篇笔记吗？')) return;
+            var msg = currentFilter === 'trash' ? '确定要永久删除选中的 ' + selectedNotes.size + ' 篇笔记吗？' : '确定要删除选中的 ' + selectedNotes.size + ' 篇笔记吗？';
+            if (!confirm(msg)) return;
             var notes = getNotes();
-            notes = notes.filter(function(n) { return !selectedNotes.has(n.id); });
+            if (currentFilter === 'trash') {
+                notes = notes.filter(function(n) { return !selectedNotes.has(n.id); });
+            } else {
+                notes.forEach(function(n) {
+                    if (selectedNotes.has(n.id)) { n.deleted = true; n.updatedAt = new Date().toISOString(); }
+                });
+            }
             saveNotes(notes);
             if (currentNote && selectedNotes.has(currentNote.id)) {
                 currentNote = null;
@@ -750,6 +777,8 @@
                 document.getElementById('noteTitle').value = '';
                 document.getElementById('noteContent').value = '';
                 document.getElementById('toggleStar').textContent = '☆';
+                var pinBtn = document.getElementById('pinNote');
+                if (pinBtn) { pinBtn.style.color = ''; }
                 updateWordCount();
                 document.getElementById('lastSaved').textContent = '未保存';
                 return;
@@ -757,6 +786,8 @@
             document.getElementById('noteTitle').value = currentNote.title;
             document.getElementById('noteContent').value = currentNote.content;
             document.getElementById('toggleStar').textContent = currentNote.starred ? '⭐' : '☆';
+            var pinBtn = document.getElementById('pinNote');
+            if (pinBtn) pinBtn.style.color = currentNote.pinned ? '#f77f00' : '';
             updateWordCount();
             updateLastSaved();
             var preview = document.getElementById('preview');
@@ -808,6 +839,15 @@
             renderNoteList();
         }
 
+        function pinNote() {
+            if (!currentNote) return;
+            currentNote.pinned = !currentNote.pinned;
+            saveCurrentNote();
+            document.getElementById('pinNote').textContent = currentNote.pinned ? '📌' : '📌';
+            document.getElementById('pinNote').style.color = currentNote.pinned ? '#f77f00' : '';
+            renderNoteList();
+        }
+
         function deleteNote() {
             if (!currentNote) return;
             if (currentNote.deleted) {
@@ -822,6 +862,29 @@
                 saveCurrentNote();
             }
             renderEditor();
+            renderNoteList();
+        }
+
+        function restoreNote(id) {
+            var notes = getNotes();
+            var note = notes.find(function(n) { return n.id === id; });
+            if (note) {
+                note.deleted = false;
+                note.updatedAt = new Date().toISOString();
+                saveNotes(notes);
+                renderNoteList();
+            }
+        }
+
+        function clearTrash() {
+            if (!confirm('确定要清空回收站吗？所有笔记将永久删除。')) return;
+            var notes = getNotes();
+            notes = notes.filter(function(n) { return !n.deleted; });
+            saveNotes(notes);
+            if (currentNote && currentNote.deleted) {
+                currentNote = null;
+                renderEditor();
+            }
             renderNoteList();
         }
 
@@ -1283,6 +1346,7 @@
 
             if (currentFilter === 'all') notes = notes.filter(function(n) { return !n.deleted; });
             else if (currentFilter === 'starred') notes = notes.filter(function(n) { return n.starred && !n.deleted; });
+            else if (currentFilter === 'trash') notes = notes.filter(function(n) { return n.deleted; });
 
             if (keyword) {
                 var lower = keyword.toLowerCase();
@@ -1291,11 +1355,20 @@
                 });
             }
 
-            notes.sort(getSortFn(sortKey));
+            // 置顶笔记排前面
+            notes.sort(function(a, b) {
+                if (a.pinned && !b.pinned) return -1;
+                if (!a.pinned && b.pinned) return 1;
+                return getSortFn(sortKey)(a, b);
+            });
 
             var listEl = document.getElementById('noteList');
             if (notes.length === 0) {
-                listEl.innerHTML = '<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-text">没有找到笔记</div><div class="empty-hint">试试其他搜索关键词</div></div>';
+                if (currentFilter === 'trash') {
+                    listEl.innerHTML = '<div class="empty-state"><div class="empty-icon">🗑️</div><div class="empty-text">回收站为空</div><div class="empty-hint">删除的笔记会出现在这里</div></div>';
+                } else {
+                    listEl.innerHTML = '<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-text">没有找到笔记</div><div class="empty-hint">试试其他搜索关键词</div></div>';
+                }
                 return;
             }
 
@@ -1305,8 +1378,9 @@
                 var active = currentNote && currentNote.id === note.id && !isSelecting ? 'active' : '';
                 var selected = selectedNotes.has(note.id) ? 'selected' : '';
                 var star = note.starred ? '<span class="star-indicator">⭐</span>' : '';
+                var pin = note.pinned ? '<span class="pin-indicator">📌</span>' : '';
                 var itemClass = 'note-item ' + active + ' ' + selected;
-                var clickAttr = isSelecting ? 'onclick="toggleSelect(\'' + note.id + '\')"' : 'onclick="loadNote(\'' + note.id + '\')"';
+                var clickAttr = isSelecting ? 'onclick="toggleSelect(\'' + note.id + '\')"' : (currentFilter === 'trash' ? 'onclick="restoreNote(\'' + note.id + '\')"' : 'onclick="loadNote(\'' + note.id + '\')"');
                 return '<div class="' + itemClass + '" ' + clickAttr +
                     ' onmousedown="startLongPress(\'' + note.id + '\', this)" ' +
                     ' ontouchstart="startLongPress(\'' + note.id + '\', this)" ' +
@@ -1316,7 +1390,7 @@
                     ' data-note-id="' + note.id + '">' +
                     '<span class="note-checkbox"></span>' +
                     '<div class="note-item-inner">' +
-                    '<div class="note-title">' + star + (note.title || '无标题') + '</div>' +
+                    '<div class="note-title">' + pin + star + (note.title || '无标题') + '</div>' +
                     '<div class="note-preview">' + (preview || '空笔记') + '</div>' +
                     '<div class="note-date">' + date + '</div></div></div>';
             }).join('');
