@@ -190,27 +190,6 @@
         .editor-body.split #noteContent { border-right: 1px solid #dee2e6; }
         [data-theme="dark"] .editor-body.split #noteContent { border-color: #2d3748; }
         #noteContent { width: 100%; height: 100%; padding: 24px; border: none; background: #fff; font-size: 15px; line-height: 1.7; outline: none; font-family: 'SF Mono', 'Monaco', monospace; overflow-y: auto; }
-        #noteContent img { max-width: 100%; height: auto; display: block; margin: 8px 0; border-radius: 4px; }
-        #noteContent p { margin: 8px 0; }
-        #noteContent h1, #noteContent h2, #noteContent h3 { margin: 12px 0 8px; }
-        #noteContent blockquote { border-left: 3px solid #4a6cf7; padding-left: 12px; color: #6c757d; margin: 8px 0; }
-        #noteContent code { background: #f0f0f0; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
-        #noteContent pre { background: #f0f0f0; padding: 12px; border-radius: 6px; overflow-x: auto; }
-        #noteContent pre code { background: transparent; padding: 0; }
-        #noteContent table { width: 100%; border-collapse: collapse; margin: 8px 0; }
-        #noteContent th, #noteContent td { border: 1px solid #dee2e6; padding: 6px 10px; }
-        #noteContent th { background: #f8f9fa; font-weight: 600; }
-        #noteContent ul, #noteContent ol { padding-left: 24px; margin: 8px 0; }
-        #noteContent hr { border: none; border-top: 2px solid #dee2e6; margin: 16px 0; }
-        #noteContent a { color: #4a6cf7; }
-        [data-theme="dark"] #noteContent img { filter: brightness(0.9); }
-        [data-theme="dark"] #noteContent blockquote { border-color: #4a6cf7; color: #adb5bd; }
-        [data-theme="dark"] #noteContent code { background: #2d3748; }
-        [data-theme="dark"] #noteContent pre { background: #2d3748; }
-        [data-theme="dark"] #noteContent th { background: #2d3748; }
-        [data-theme="dark"] #noteContent th, #noteContent td { border-color: #2d3748; }
-        #noteContent:empty::before { content: attr(placeholder); color: #adb5bd; pointer-events: none; }
-        [data-theme="dark"] #noteContent:empty::before { color: #6c757d; }
         #preview { width: 100%; height: 100%; padding: 24px; overflow-y: auto; background: #fff; line-height: 1.7; }
         .editor-body.split #preview { background: #f8f9fa; }
         [data-theme="dark"] .editor-body.split #preview { background: #16213e; }
@@ -1137,9 +1116,7 @@
         // ============ 标签提取 ============
         function extractTags(content) {
             if (!content) return [];
-            // 兼容 HTML 内容：先去除 HTML 标签
-            var text = content.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
-            var tags = text.match(/#([\w\u4e00-\u9fa5]+)/g);
+            var tags = content.match(/#([\w\u4e00-\u9fa5]+)/g);
             if (!tags) return [];
             var unique = [];
             tags.forEach(function(t) {
@@ -1283,7 +1260,7 @@
             var lockBtn = document.getElementById('lockNote');
             if (!currentNote) {
                 document.getElementById('noteTitle').value = '';
-                document.getElementById('noteContent').innerHTML = '';
+                document.getElementById('noteContent').value = '';
                 document.getElementById('toggleStar').textContent = '☆';
                 var pinBtn = document.getElementById('pinNote');
                 if (pinBtn) { pinBtn.style.color = ''; }
@@ -1295,16 +1272,7 @@
                 return;
             }
             document.getElementById('noteTitle').value = currentNote.title;
-            if (currentNote.locked) {
-                document.getElementById('noteContent').innerHTML = '<p style="color:#dc3545;text-align:center;padding:40px">🔒 笔记已锁定，点击 🔓 解锁</p>';
-            } else {
-                // 兼容旧 markdown 数据：自动转换为 HTML
-                var content = currentNote.content;
-                if (content && !content.startsWith('<') && !content.startsWith('[')) {
-                    content = parseMarkdown(content, getNotes());
-                }
-                document.getElementById('noteContent').innerHTML = content;
-            }
+            document.getElementById('noteContent').value = currentNote.locked ? '🔒 笔记已锁定，点击 🔓 解锁' : currentNote.content;
             document.getElementById('toggleStar').textContent = currentNote.starred ? '⭐' : '☆';
             var pinBtn = document.getElementById('pinNote');
             if (pinBtn) pinBtn.style.color = currentNote.pinned ? '#f77f00' : '';
@@ -1321,7 +1289,7 @@
             updateLastSaved();
             var preview = document.getElementById('preview');
             if (!preview.classList.contains('hidden')) {
-                preview.innerHTML = currentNote.locked ? '<p style="color:#dc3545;text-align:center;padding:40px">🔒 笔记已锁定</p>' : renderCommentsInPreview(currentNote.content);
+                preview.innerHTML = currentNote.locked ? '<p style="color:#dc3545;text-align:center;padding:40px">🔒 笔记已锁定</p>' : renderCommentsInPreview(parseMarkdown(currentNote.content, getNotes()));
                 // 应用增强渲染
                 applySyntaxHighlighting();
                 applyMermaid();
@@ -1346,10 +1314,7 @@
             if (!currentNote) return;
             currentNote.title = document.getElementById('noteTitle').value;
             if (!currentNote.locked) {
-                var content = document.getElementById('noteContent').innerHTML;
-                // 清理多余的空 <div> 标签
-                content = content.replace(/<div><br><\/div>/g, '').replace(/<div><\/div>/g, '');
-                currentNote.content = content;
+                currentNote.content = document.getElementById('noteContent').value;
             }
             currentNote.category = document.getElementById('noteCategory').value;
             currentNote.folder = document.getElementById('noteFolder').value;
@@ -1418,7 +1383,7 @@
             currentNote.content = version.content;
             currentNote.updatedAt = new Date().toISOString();
             document.getElementById('noteTitle').value = currentNote.title;
-            document.getElementById('noteContent').innerHTML = currentNote.content;
+            document.getElementById('noteContent').value = currentNote.content;
             autoSave();
             updatePreview();
             updateWordCount();
@@ -1447,7 +1412,7 @@
 
             notes.forEach(function(n) {
                 if (n.deleted) return;
-                var content = (n.content || '').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+                var content = n.content || '';
                 totalChars += content.length;
                 totalWords += content.trim() ? content.trim().split(/\s+/).length : 0;
                 totalLines += content ? content.split('\n').length : 0;
@@ -1527,8 +1492,7 @@
         }
 
         function updateWordCount() {
-            var el = document.getElementById('noteContent');
-            var text = el.innerText || el.textContent || '';
+            var text = document.getElementById('noteContent').value;
             var chars = text.length;
             var lines = text ? text.split('\n').length : 0;
             var words = text.trim() ? text.trim().split(/\s+/).length : 0;
@@ -1654,7 +1618,7 @@
 
         function exportNote() {
             if (!currentNote) return;
-            var content = '# ' + currentNote.title + '\n\n' + htmlToMarkdown(currentNote.content);
+            var content = '# ' + currentNote.title + '\n\n' + currentNote.content;
             var blob = new Blob([content], { type: 'text/markdown' });
             var url = URL.createObjectURL(blob);
             var a = document.createElement('a');
@@ -1796,7 +1760,7 @@
             if (!currentNote) return;
             var preview = document.getElementById('preview');
             var content = document.getElementById('noteContent');
-            preview.innerHTML = '<h1>' + escapeHtml(currentNote.title) + '</h1>' + renderCommentsInPreview(content.innerHTML);
+            preview.innerHTML = '<h1>' + escapeHtml(currentNote.title) + '</h1>' + renderCommentsInPreview(parseMarkdown(currentNote.content, getNotes()));
             preview.classList.remove('hidden');
             content.classList.add('hidden');
             // 应用增强渲染
@@ -1816,9 +1780,11 @@
             if (bar.classList.contains('show')) {
                 document.getElementById('findInput').focus();
                 // 如果有选中文本，自动填入
-                var sel = window.getSelection();
-                if (sel.rangeCount && sel.toString().length > 0) {
-                    document.getElementById('findInput').value = sel.toString();
+                var textarea = document.getElementById('noteContent');
+                var start = textarea.selectionStart;
+                var end = textarea.selectionEnd;
+                if (start !== end) {
+                    document.getElementById('findInput').value = textarea.value.substring(start, end);
                     doFind();
                 }
             } else {
@@ -1830,66 +1796,76 @@
 
         function doFind() {
             var query = document.getElementById('findInput').value;
+            var textarea = document.getElementById('noteContent');
+            var text = textarea.value;
+            findMatches = [];
+            findIndex = -1;
+
             if (!query) {
                 document.getElementById('findCount').textContent = '0/0';
                 return;
             }
-            // 使用浏览器原生查找
-            try {
-                var found = window.find(query, false, false, true, false, true, false);
-                if (found) {
-                    document.getElementById('findCount').textContent = '找到';
-                } else {
-                    document.getElementById('findCount').textContent = '未找到';
-                }
-            } catch (e) {
-                // 回退：在 innerText 中搜索
-                var editor = document.getElementById('noteContent');
-                var text = editor.innerText || editor.textContent || '';
-                var idx = text.indexOf(query);
-                document.getElementById('findCount').textContent = idx >= 0 ? '找到' : '未找到';
+
+            var idx = 0;
+            while ((idx = text.indexOf(query, idx)) !== -1) {
+                findMatches.push(idx);
+                idx += query.length;
             }
+
+            if (findMatches.length > 0) {
+                findIndex = 0;
+                selectMatch(findMatches[0], query.length);
+            }
+
+            document.getElementById('findCount').textContent = findMatches.length > 0 ? (findIndex + 1) + '/' + findMatches.length : '0/' + findMatches.length;
         }
 
-        function selectMatch() {
-            // contenteditable 模式下由 window.find 自动处理选中
+        function selectMatch(start, length) {
+            var textarea = document.getElementById('noteContent');
+            textarea.focus();
+            textarea.selectionStart = start;
+            textarea.selectionEnd = start + length;
+            // 滚动到选中位置
+            var lineHeight = 24; // 估算行高
+            var scrollPos = Math.floor(start / 60) * lineHeight; // 估算每行60字符
+            textarea.scrollTop = scrollPos - textarea.clientHeight / 2;
         }
 
         function findNext() {
-            var query = document.getElementById('findInput').value;
-            if (!query) return;
-            try {
-                window.find(query, false, false, false, false, true, false);
-            } catch (e) {}
+            if (findMatches.length === 0) return;
+            findIndex = (findIndex + 1) % findMatches.length;
+            selectMatch(findMatches[findIndex], document.getElementById('findInput').value.length);
+            document.getElementById('findCount').textContent = (findIndex + 1) + '/' + findMatches.length;
         }
 
         function findPrev() {
-            var query = document.getElementById('findInput').value;
-            if (!query) return;
-            try {
-                window.find(query, true, false, false, false, true, false);
-            } catch (e) {}
+            if (findMatches.length === 0) return;
+            findIndex = (findIndex - 1 + findMatches.length) % findMatches.length;
+            selectMatch(findMatches[findIndex], document.getElementById('findInput').value.length);
+            document.getElementById('findCount').textContent = (findIndex + 1) + '/' + findMatches.length;
         }
 
         function replaceOne() {
-            var sel = window.getSelection();
-            if (!sel.rangeCount || !sel.toString()) return;
+            if (findMatches.length === 0) return;
+            var query = document.getElementById('findInput').value;
             var replace = document.getElementById('replaceInput').value;
-            var range = sel.getRangeAt(0);
-            range.deleteContents();
-            range.insertNode(document.createTextNode(replace));
+            var textarea = document.getElementById('noteContent');
+            var text = textarea.value;
+            var start = findMatches[findIndex];
+            text = text.substring(0, start) + replace + text.substring(start + query.length);
+            textarea.value = text;
+            doFind(); // 重新查找
             autoSave();
-            doFind();
         }
 
         function replaceAll() {
+            if (findMatches.length === 0) return;
             var query = document.getElementById('findInput').value;
             var replace = document.getElementById('replaceInput').value;
-            if (!query) return;
-            var editor = document.getElementById('noteContent');
-            editor.innerHTML = editor.innerHTML.split(query).join(replace);
-            autoSave();
+            var textarea = document.getElementById('noteContent');
+            textarea.value = textarea.value.split(query).join(replace);
             doFind();
+            autoSave();
         }
 
         // ============ 导出 ============
@@ -2077,12 +2053,16 @@
         var commentPopup = null;
 
         function initCommentListener() {
-            var editor = document.getElementById('noteContent');
-            editor.addEventListener('mouseup', function() {
-                var sel = window.getSelection();
-                if (sel.rangeCount && sel.toString().length > 0 && sel.toString().length <= 500) {
-                    commentSelection = { text: sel.toString(), range: sel.getRangeAt(0).cloneRange() };
-                    showCommentPopup();
+            var textarea = document.getElementById('noteContent');
+            textarea.addEventListener('mouseup', function() {
+                var start = textarea.selectionStart;
+                var end = textarea.selectionEnd;
+                if (end - start > 0) {
+                    var text = textarea.value.substring(start, end);
+                    if (text.length > 0 && text.length <= 500) {
+                        commentSelection = { start: start, end: end, text: text };
+                        showCommentPopup();
+                    }
                 }
             });
         }
@@ -2091,12 +2071,17 @@
             if (!commentPopup) {
                 commentPopup = document.getElementById('commentPopup');
             }
-            var sel = window.getSelection();
-            if (sel.rangeCount) {
-                var rect = sel.getRangeAt(0).getBoundingClientRect();
-                commentPopup.style.left = Math.min(rect.left, window.innerWidth - 220) + 'px';
-                commentPopup.style.top = (rect.bottom + 8) + 'px';
-            }
+            var textarea = document.getElementById('noteContent');
+            var rect = textarea.getBoundingClientRect();
+            var lineHeight = 24;
+            var charWidth = 10;
+            var start = commentSelection.start;
+            var end = commentSelection.end;
+            var mid = (start + end) / 2;
+            var x = rect.left + (mid % 60) * charWidth;
+            var y = rect.top + Math.floor(mid / 60) * lineHeight;
+            commentPopup.style.left = Math.min(x, window.innerWidth - 220) + 'px';
+            commentPopup.style.top = (y + lineHeight) + 'px';
             commentPopup.classList.add('show');
             document.getElementById('commentText').value = '';
             document.getElementById('commentText').focus();
@@ -2114,7 +2099,8 @@
             if (!text) return;
             currentNote.comments.push({
                 id: Date.now().toString(),
-                text: commentSelection.text,
+                start: commentSelection.start,
+                end: commentSelection.end,
                 content: text,
                 createdAt: new Date().toISOString()
             });
@@ -2126,14 +2112,15 @@
         function renderCommentsInPreview(html) {
             if (!currentNote || !currentNote.comments || currentNote.comments.length === 0) return html;
             var comments = currentNote.comments;
-            // 简单标记：给有批注的文本添加高亮
-            comments.forEach(function(c) {
-                if (!c.text) return;
-                var escaped = c.text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                var re = new RegExp(escaped, 'g');
-                html = html.replace(re, function(m) {
-                    return '<span class="comment-marker" data-comment="' + escapeHtml(c.content) + '" onclick="showCommentDetail(\'' + c.id + '\')">' + m + '</span>';
-                });
+            var content = currentNote.content;
+            // 从后往前插入，避免位置偏移
+            comments.slice().reverse().forEach(function(c) {
+                if (c.start >= content.length || c.end > content.length) return;
+                var before = html.substring(0, c.start);
+                var marked = html.substring(c.start, c.end);
+                var after = html.substring(c.end);
+                var marker = '<span class="comment-marker" data-comment="' + escapeHtml(c.content) + '" onclick="showCommentDetail(\'' + c.id + '\')">' + marked + '</span>';
+                html = before + marker + after;
             });
             return html;
         }
@@ -2154,17 +2141,17 @@
 
             switch(format) {
                 case 'md':
-                    content = '# ' + title + '\n\n' + htmlToMarkdown(currentNote.content);
+                    content = '# ' + title + '\n\n' + currentNote.content;
                     mime = 'text/markdown';
                     ext = '.md';
                     break;
                 case 'html':
-                    content = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + title + '</title></head><body>' + currentNote.content + '</body></html>';
+                    content = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + title + '</title></head><body>' + parseMarkdown(currentNote.content, null) + '</body></html>';
                     mime = 'text/html';
                     ext = '.html';
                     break;
                 case 'txt':
-                    content = title + '\n\n' + (currentNote.content || '').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+                    content = title + '\n\n' + currentNote.content.replace(/[#*`\[\]()<>]|<\/?>[^>]+(>|$)/g, '');
                     mime = 'text/plain';
                     ext = '.txt';
                     break;
@@ -2173,7 +2160,7 @@
                     var printWindow = window.open('', '_blank');
                     var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + title + '</title>' +
                         '<style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;max-width:800px;margin:40px auto;padding:0 20px;line-height:1.8;color:#333}h1{border-bottom:2px solid #4a6cf7;padding-bottom:10px}h2{border-bottom:1px solid #dee2e6;padding-bottom:8px}pre{background:#f8f9fa;padding:12px;border-radius:6px;overflow-x:auto}code{background:#f8f9fa;padding:2px 6px;border-radius:3px}blockquote{border-left:4px solid #4a6cf7;padding:8px 16px;color:#6c757d;margin:16px 0}table{border-collapse:collapse;width:100%;margin:16px 0}th,td{border:1px solid #dee2e6;padding:8px 12px;text-align:left}th{background:#f8f9fa}img{max-width:100%;height:auto}ul,ol{padding-left:24px}hr{border:none;border-top:1px solid #dee2e6;margin:20px 0}</style>' +
-                        '</head><body><h1>' + escapeHtml(title) + '</h1>' + currentNote.content + '</body></html>';
+                        '</head><body><h1>' + escapeHtml(title) + '</h1>' + parseMarkdown(currentNote.content, null) + '</body></html>';
                     printWindow.document.write(html);
                     printWindow.document.close();
                     setTimeout(function() { printWindow.print(); }, 500);
@@ -2237,9 +2224,9 @@
             currentNote = note;
             document.getElementById('noteTitle').value = note.title;
             document.getElementById('noteTitle').disabled = true;
-            document.getElementById('noteContent').innerHTML = note.content;
-            document.getElementById('noteContent').contentEditable = 'false';
-            document.getElementById('preview').innerHTML = '<h1>' + escapeHtml(note.title) + '</h1>' + note.content;
+            document.getElementById('noteContent').value = note.content;
+            document.getElementById('noteContent').disabled = true;
+            document.getElementById('preview').innerHTML = '<h1>' + escapeHtml(note.title) + '</h1>' + parseMarkdown(note.content, notes);
             document.getElementById('preview').classList.remove('hidden');
             // 隐藏编辑工具栏
             document.querySelector('.editor-toolbar').style.display = 'none';
@@ -2280,7 +2267,7 @@
                 '.task-list li.checked:before{content:"±1";color:#52c41a}' +
                 '</style></head><body>' +
                 '<h1>' + escapeHtml(title) + '</h1>' +
-                '<div>' + (content || '') + '</div>' +
+                '<div>' + parseMarkdown(content, null) + '</div>' +
                 '</body></html>';
             return html;
         }
@@ -2307,11 +2294,16 @@
                         canvas.height = h;
                         canvas.getContext('2d').drawImage(img, 0, 0, w, h);
                         var base64 = canvas.toDataURL('image/jpeg', 0.85);
-                        var imgHtml = '<img src="' + base64 + '" alt="🖼️ Image" />';
-                        insertAtCursor(document.getElementById('noteContent'), imgHtml);
+                        var textarea = document.getElementById('noteContent');
+                        var start = textarea.selectionStart;
+                        var text = textarea.value;
+                        var insert = '\n![🖼️ Image](data:image/jpeg;base64,' + base64.substring(base64.indexOf(',') + 1) + ')\n';
+                        textarea.value = text.substring(0, start) + insert + text.substring(start);
+                        textarea.focus();
+                        textarea.selectionStart = textarea.selectionEnd = start + insert.length;
                         autoSave();
                         // OCR 识别图片文字
-                        doOCR(base64);
+                        doOCR(base64, textarea, start + insert.length);
                     };
                     img.src = reader.result;
                 };
@@ -2321,7 +2313,7 @@
         }
 
         // ============ OCR 图片文字识别 ============
-        function doOCR(base64) {
+        function doOCR(base64, textarea, cursorPos) {
             if (typeof Tesseract === 'undefined') {
                 console.log('Tesseract.js not loaded');
                 return;
@@ -2345,8 +2337,9 @@
             }).then(function(result) {
                 var text = result.data.text.trim();
                 if (text) {
-                    var insert = '<blockquote>' + text.replace(/\n/g, '<br>') + '</blockquote>';
-                    insertAtCursor(document.getElementById('noteContent'), insert);
+                    var insert = '\n> ' + text.replace(/\n/g, '\n> ') + '\n';
+                    var t = textarea.value;
+                    textarea.value = t.substring(0, cursorPos) + insert + t.substring(cursorPos);
                     autoSave();
                 }
                 progressEl.innerHTML = '<span>✅ OCR 完成</span>';
@@ -2365,10 +2358,9 @@
             if (!url.startsWith('http://') && !url.startsWith('https://')) {
                 url = 'https://' + url;
             }
-            var editor = document.getElementById('noteContent');
-            var startRange = null;
-            var sel = window.getSelection();
-            if (sel.rangeCount) startRange = sel.getRangeAt(0);
+            var textarea = document.getElementById('noteContent');
+            var start = textarea.selectionStart;
+            var text = textarea.value;
 
             // 移除旧进度条
             var oldProgress = document.getElementById('clip-progress');
@@ -2385,29 +2377,9 @@
                 try {
                     var res = await fetch('https://r.jina.ai/' + url);
                     var content = await res.text();
-                    var title = (function(){ var m = content.match(/^#\s+(.+)/m); return m ? m[1].trim() : url; })();
-                    var bodyHtml = parseMarkdown(content.substring(content.indexOf('\n\n')), getNotes());
-                    var insert = '<div style="border-left:3px solid #4a6cf7;padding:8px 16px;margin:8px 0">' +
-                        '<h4 style="margin:0 0 8px"><a href="' + url + '" target="_blank">' + escapeHtml(title || url) + '</a></h4>' +
-                        bodyHtml + '</div>';
-                    if (startRange) {
-                        startRange.deleteContents();
-                        var el = document.createElement('div');
-                        el.innerHTML = insert;
-                        var frag = document.createDocumentFragment();
-                        var node, lastNode;
-                        while ((node = el.firstChild)) { lastNode = frag.appendChild(node); }
-                        startRange.insertNode(frag);
-                        if (lastNode) {
-                            var newRange = document.createRange();
-                            newRange.setStartAfter(lastNode);
-                            newRange.collapse(true);
-                            sel.removeAllRanges();
-                            sel.addRange(newRange);
-                        }
-                    } else {
-                        editor.innerHTML += insert;
-                    }
+                    var insert = '\n---\n📎 **剪藏自：' + url + '**\n\n' + content.substring(0, 5000) + '\n';
+                    var t = textarea.value;
+                    textarea.value = t.substring(0, start) + insert + t.substring(start);
                     autoSave();
                     progressEl.innerHTML = '<span>✅ 剪藏完成</span>';
                     setTimeout(function() { progressEl.remove(); }, 2000);
@@ -2427,138 +2399,96 @@
             return div.innerHTML;
         }
 
-        // 简易 HTML → Markdown 转换（导出用）
-        function htmlToMarkdown(html) {
-            if (!html) return '';
-            var md = html;
-            md = md.replace(/<h1[^>]*>(.*?)<\/h1>/gi, '\n# $1\n');
-            md = md.replace(/<h2[^>]*>(.*?)<\/h2>/gi, '\n## $1\n');
-            md = md.replace(/<h3[^>]*>(.*?)<\/h3>/gi, '\n### $1\n');
-            md = md.replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**');
-            md = md.replace(/<b[^>]*>(.*?)<\/b>/gi, '**$1**');
-            md = md.replace(/<em[^>]*>(.*?)<\/em>/gi, '*$1*');
-            md = md.replace(/<i[^>]*>(.*?)<\/i>/gi, '*$1*');
-            md = md.replace(/<blockquote[^>]*>(.*?)<\/blockquote>/gi, function(m, inner) {
-                return '\n> ' + inner.replace(/<br\s*\/>/gi, '\n>').replace(/<[^>]+>/g, '') + '\n';
-            });
-            md = md.replace(/<pre[^>]*><code[^>]*>([\s\S]*?)<\/code><\/pre>/gi, '\n```\n$1\n```\n');
-            md = md.replace(/<code[^>]*>(.*?)<\/code>/gi, '`$1`');
-            md = md.replace(/<img[^>]*src="([^"]+)"[^>]*>/gi, '![](\$1)');
-            md = md.replace(/<a[^>]*href="([^"]+)"[^>]*>(.*?)<\/a>/gi, '[$2](\$1)');
-            md = md.replace(/<hr\s*\/>/gi, '\n---\n');
-            md = md.replace(/<br\s*\/>/gi, '\n');
-            md = md.replace(/<p[^>]*>([\s\S]*?)<\/p>/gi, '$1\n');
-            md = md.replace(/<div[^>]*>([\s\S]*?)<\/div>/gi, '$1');
-            md = md.replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, '- $1\n');
-            md = md.replace(/<ul[^>]*>|<\/ul>/gi, '');
-            md = md.replace(/<ol[^>]*>|<\/ol>/gi, '');
-            md = md.replace(/<table[^>]*>([\s\S]*?)<\/table>/gi, function(m, inner) {
-                var rows = inner.match(/<tr[^>]*>([\s\S]*?)<\/tr>/gi) || [];
-                var mdRows = [];
-                rows.forEach(function(row) {
-                    var cells = (row.match(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>\s*/gi) || []).map(function(c) {
-                        return c.replace(/<[^>]+>/g, '').trim();
-                    });
-                    mdRows.push(cells.join(' | '));
-                });
-                if (mdRows.length > 0) mdRows.splice(1, 0, mdRows[0].split('|').map(function() { return '---'; }).join('|'));
-                return '\n' + mdRows.join('\n') + '\n';
-            });
-            md = md.replace(/<[^>]+>/g, '');
-            md = md.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
-            md = md.replace(/\n{3,}/g, '\n\n');
-            return md.trim();
-        }
-
-        // ============ 光标插入辅助函数 ============
-        function insertAtCursor(editor, html) {
-            var sel = window.getSelection();
-            if (sel.rangeCount) {
-                var range = sel.getRangeAt(0);
-                range.deleteContents();
-                var el = document.createElement('div');
-                el.innerHTML = html;
-                var frag = document.createDocumentFragment();
-                var node, lastNode;
-                while ((node = el.firstChild)) {
-                    lastNode = frag.appendChild(node);
-                }
-                range.insertNode(frag);
-                if (lastNode) {
-                    range = document.createRange();
-                    range.setStartAfter(lastNode);
-                    range.collapse(true);
-                    sel.removeAllRanges();
-                    sel.addRange(range);
-                }
-            }
-        }
-
         // ============ Markdown 编辑器工具栏 ============
         function insertWikiLink() {
-            var editor = document.getElementById('noteContent');
-            insertAtCursor(editor, '<a href="#" style="color:#4a6cf7;font-weight:500">📎 笔记名</a>');
-            editor.focus();
+            var textarea = document.getElementById('noteContent');
+            var start = textarea.selectionStart;
+            var text = textarea.value;
+            var insert = '[[笔记名]]';
+            textarea.value = text.substring(0, start) + insert + text.substring(start);
+            textarea.focus();
+            textarea.selectionStart = textarea.selectionEnd = start + 2;
             autoSave();
         }
 
         function insertMarkdown(command) {
-            var editor = document.getElementById('noteContent');
-            var sel = window.getSelection();
-            var range = sel.getRangeAt ? sel.getRangeAt(0) : null;
-            var selected = range ? range.toString() : '';
+            var textarea = document.getElementById('noteContent');
+            var start = textarea.selectionStart;
+            var end = textarea.selectionEnd;
+            var text = textarea.value;
+            var selected = text.substring(start, end);
+            var insert = '';
+            var cursorOffset = 0;
 
             switch(command) {
                 case 'bold':
-                    document.execCommand('bold', false, null);
+                    insert = '**' + (selected || '粗体') + '**';
+                    cursorOffset = selected ? 0 : -2;
                     break;
                 case 'italic':
-                    document.execCommand('italic', false, null);
+                    insert = '*' + (selected || '斜体') + '*';
+                    cursorOffset = selected ? 0 : -1;
                     break;
                 case 'h1':
-                    document.execCommand('formatBlock', false, 'h1');
+                    insert = '\n# ' + (selected || '标题1');
+                    cursorOffset = -2;
                     break;
                 case 'h2':
-                    document.execCommand('formatBlock', false, 'h2');
+                    insert = '\n## ' + (selected || '标题2');
+                    cursorOffset = -2;
                     break;
                 case 'h3':
-                    document.execCommand('formatBlock', false, 'h3');
+                    insert = '\n### ' + (selected || '标题3');
+                    cursorOffset = -2;
                     break;
                 case 'ul':
-                    document.execCommand('insertUnorderedList', false, null);
+                    insert = '\n- ' + (selected || '列表项');
+                    cursorOffset = -2;
                     break;
                 case 'ol':
-                    document.execCommand('insertOrderedList', false, null);
+                    insert = '\n1. ' + (selected || '列表项');
+                    cursorOffset = -2;
                     break;
                 case 'check':
-                    insertAtCursor(editor, '<div style="margin:4px 0">☐ 待办事项</div>');
+                    insert = '\n- [ ] ' + (selected || '待办事项');
+                    cursorOffset = -2;
                     break;
                 case 'code':
-                    insertAtCursor(editor, '<pre><code>' + (selected || '代码') + '</code></pre>');
+                    insert = '\n```\n' + (selected || '代码') + '\n```\n';
+                    cursorOffset = selected ? 0 : -6;
                     break;
                 case 'quote':
-                    document.execCommand('formatBlock', false, 'blockquote');
+                    insert = '\n> ' + (selected || '引用');
+                    cursorOffset = -2;
                     break;
                 case 'link':
-                    var url = prompt('请输入链接地址：', 'https://');
-                    if (url) {
-                        document.execCommand('createLink', false, url);
-                    }
+                    insert = '[' + (selected || '链接文本') + '](url)';
+                    cursorOffset = selected ? 0 : -5;
                     break;
                 case 'table':
-                    insertAtCursor(editor, '<table><tr><th>列1</th><th>列2</th><th>列3</th></tr><tr><td>内容</td><td>内容</td><td>内容</td></tr></table>');
+                    insert = '\n| 列1 | 列2 | 列3 |\n|-----|-----|-----|\n| 内容 | 内容 | 内容 |\n';
+                    cursorOffset = -2;
                     break;
                 case 'hr':
-                    document.execCommand('insertHorizontalRule', false, null);
+                    insert = '\n---\n';
+                    cursorOffset = -2;
                     break;
                 case 'mermaid':
-                    insertAtCursor(editor, '<pre class="mermaid">graph TD\n    A[开始] --> B{判断}\n    B -->|是| C[执行]\n    B -->|否| D[结束]</pre>');
+                    insert = '\n```mermaid\ngraph TD\n    A[开始] --> B{判断}\n    B -->|是| C[执行]\n    B -->|否| D[结束]\n```\n';
+                    cursorOffset = selected ? 0 : -8;
                     break;
                 case 'formula':
-                    insertAtCursor(editor, '<span class="formula">$E = mc^2$</span>');
+                    insert = '\n$E = mc^2$\n';
+                    cursorOffset = selected ? 0 : -6;
                     break;
             }
-            editor.focus();
+
+            textarea.value = text.substring(0, start) + insert + text.substring(end);
+            textarea.focus();
+            var newPos = start + insert.length + cursorOffset;
+            if (newPos < 0) newPos = 0;
+            textarea.selectionStart = newPos;
+            textarea.selectionEnd = newPos;
             autoSave();
         }
 
@@ -2600,7 +2530,7 @@
                 if (currentNote.locked) {
                     preview.innerHTML = '<p style="color:#dc3545;text-align:center;padding:40px">🔒 笔记已锁定</p>';
                 } else {
-                    preview.innerHTML = '<h1>' + escapeHtml(currentNote.title) + '</h1>' + renderCommentsInPreview(currentNote.content);
+                    preview.innerHTML = '<h1>' + escapeHtml(currentNote.title) + '</h1>' + renderCommentsInPreview(parseMarkdown(currentNote.content, getNotes()));
                     // 应用增强渲染
                     applySyntaxHighlighting();
                     applyMermaid();
