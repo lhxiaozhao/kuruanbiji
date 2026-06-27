@@ -347,6 +347,21 @@
         [data-theme="dark"] .graph-modal-close { color: #adb5bd; }
         [data-theme="dark"] .graph-modal-close:hover { background: #16213e; color: #e9ecef; }
 
+        /* 批注 */
+        .comment-popup { display: none; position: fixed; background: #fff; border: 1px solid #dee2e6; border-radius: 8px; padding: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.15); z-index: 1001; min-width: 200px; }
+        .comment-popup.show { display: block; }
+        .comment-popup textarea { width: 100%; height: 60px; border: 1px solid #dee2e6; border-radius: 6px; padding: 8px; font-size: 13px; outline: none; resize: none; }
+        .comment-popup textarea:focus { border-color: #4a6cf7; }
+        .comment-popup .comment-actions { display: flex; gap: 8px; margin-top: 8px; }
+        .comment-popup .comment-actions button { flex: 1; padding: 6px; border: none; border-radius: 6px; font-size: 12px; cursor: pointer; }
+        .comment-popup .comment-actions .btn-save { background: #4a6cf7; color: white; }
+        .comment-popup .comment-actions .btn-cancel { background: #f8f9fa; color: #6c757d; }
+        .comment-marker { border-bottom: 2px solid #ffc107; cursor: pointer; position: relative; }
+        .comment-marker:hover::after { content: attr(data-comment); position: absolute; bottom: 100%; left: 0; background: #333; color: #fff; padding: 6px 10px; border-radius: 6px; font-size: 12px; white-space: normal; max-width: 300px; z-index: 100; pointer-events: none; }
+        [data-theme="dark"] .comment-popup { background: #1a1a2e; border-color: #2d3748; }
+        [data-theme="dark"] .comment-popup textarea { background: #16213e; color: #e9ecef; border-color: #2d3748; }
+        [data-theme="dark"] .comment-popup .comment-actions .btn-cancel { background: #16213e; color: #adb5bd; }
+
         /* 暗色主题 */
         [data-theme="dark"] { background: #1a1a2e; color: #e9ecef; }
         [data-theme="dark"] .sidebar { background: #16213e; border-color: #2d3748; }
@@ -579,6 +594,15 @@
                 <svg id="graphSvg"></svg>
                 <div class="graph-tooltip" id="graphTooltip"></div>
             </div>
+        </div>
+    </div>
+
+    <!-- 批注弹窗 -->
+    <div class="comment-popup" id="commentPopup">
+        <textarea id="commentText" placeholder="输入批注内容..."></textarea>
+        <div class="comment-actions">
+            <button class="btn-cancel" onclick="closeCommentPopup()">取消</button>
+            <button class="btn-save" onclick="saveComment()">保存</button>
         </div>
     </div>
 
@@ -896,6 +920,9 @@
             });
 
             window.addEventListener('beforeunload', function() { if (currentNote) saveCurrentNote(); });
+
+            // 批注监听
+            initCommentListener();
         }
 
         // ============ 主题 ============
@@ -1158,7 +1185,7 @@
             updateLastSaved();
             var preview = document.getElementById('preview');
             if (!preview.classList.contains('hidden')) {
-                preview.innerHTML = currentNote.locked ? '<p style="color:#dc3545;text-align:center;padding:40px">🔒 笔记已锁定</p>' : parseMarkdown(currentNote.content, getNotes());
+                preview.innerHTML = currentNote.locked ? '<p style="color:#dc3545;text-align:center;padding:40px">🔒 笔记已锁定</p>' : renderCommentsInPreview(parseMarkdown(currentNote.content, getNotes()));
                 // 应用增强渲染
                 applySyntaxHighlighting();
                 applyMermaid();
@@ -1349,7 +1376,7 @@
             if (!currentNote) return;
             var preview = document.getElementById('preview');
             var content = document.getElementById('noteContent');
-            preview.innerHTML = '<h1>' + escapeHtml(currentNote.title) + '</h1>' + parseMarkdown(currentNote.content, getNotes());
+            preview.innerHTML = '<h1>' + escapeHtml(currentNote.title) + '</h1>' + renderCommentsInPreview(parseMarkdown(currentNote.content, getNotes()));
             preview.classList.remove('hidden');
             content.classList.add('hidden');
             // 应用增强渲染
@@ -1635,6 +1662,90 @@
                 }
                 return hash;
             }
+        }
+
+        // ============ 批注功能 ============
+        var commentSelection = null;
+        var commentPopup = null;
+
+        function initCommentListener() {
+            var textarea = document.getElementById('noteContent');
+            textarea.addEventListener('mouseup', function() {
+                var start = textarea.selectionStart;
+                var end = textarea.selectionEnd;
+                if (end - start > 0) {
+                    var text = textarea.value.substring(start, end);
+                    if (text.length > 0 && text.length <= 500) {
+                        commentSelection = { start: start, end: end, text: text };
+                        showCommentPopup();
+                    }
+                }
+            });
+        }
+
+        function showCommentPopup() {
+            if (!commentPopup) {
+                commentPopup = document.getElementById('commentPopup');
+            }
+            var textarea = document.getElementById('noteContent');
+            var rect = textarea.getBoundingClientRect();
+            var lineHeight = 24;
+            var charWidth = 10;
+            var start = commentSelection.start;
+            var end = commentSelection.end;
+            var mid = (start + end) / 2;
+            var x = rect.left + (mid % 60) * charWidth;
+            var y = rect.top + Math.floor(mid / 60) * lineHeight;
+            commentPopup.style.left = Math.min(x, window.innerWidth - 220) + 'px';
+            commentPopup.style.top = (y + lineHeight) + 'px';
+            commentPopup.classList.add('show');
+            document.getElementById('commentText').value = '';
+            document.getElementById('commentText').focus();
+        }
+
+        function closeCommentPopup() {
+            if (commentPopup) commentPopup.classList.remove('show');
+            commentSelection = null;
+        }
+
+        function saveComment() {
+            if (!currentNote || !commentSelection) return;
+            if (!currentNote.comments) currentNote.comments = [];
+            var text = document.getElementById('commentText').value.trim();
+            if (!text) return;
+            currentNote.comments.push({
+                id: Date.now().toString(),
+                start: commentSelection.start,
+                end: commentSelection.end,
+                content: text,
+                createdAt: new Date().toISOString()
+            });
+            autoSave();
+            closeCommentPopup();
+            if (viewMode === 'split' || viewMode === 'preview') updatePreview();
+        }
+
+        function renderCommentsInPreview(html) {
+            if (!currentNote || !currentNote.comments || currentNote.comments.length === 0) return html;
+            var comments = currentNote.comments;
+            var content = currentNote.content;
+            // 从后往前插入，避免位置偏移
+            comments.slice().reverse().forEach(function(c) {
+                if (c.start >= content.length || c.end > content.length) return;
+                var before = html.substring(0, c.start);
+                var marked = html.substring(c.start, c.end);
+                var after = html.substring(c.end);
+                var marker = '<span class="comment-marker" data-comment="' + escapeHtml(c.content) + '" onclick="showCommentDetail(\'' + c.id + '\')">' + marked + '</span>';
+                html = before + marker + after;
+            });
+            return html;
+        }
+
+        function showCommentDetail(commentId) {
+            if (!currentNote || !currentNote.comments) return;
+            var comment = currentNote.comments.find(function(c) { return c.id === commentId; });
+            if (!comment) return;
+            alert('批注：\n' + comment.content + '\n\n原文：' + comment.text);
         }
 
         function exportAs(format) {
@@ -1933,7 +2044,7 @@
                 if (currentNote.locked) {
                     preview.innerHTML = '<p style="color:#dc3545;text-align:center;padding:40px">🔒 笔记已锁定</p>';
                 } else {
-                    preview.innerHTML = '<h1>' + escapeHtml(currentNote.title) + '</h1>' + parseMarkdown(currentNote.content, getNotes());
+                    preview.innerHTML = '<h1>' + escapeHtml(currentNote.title) + '</h1>' + renderCommentsInPreview(parseMarkdown(currentNote.content, getNotes()));
                     // 应用增强渲染
                     applySyntaxHighlighting();
                     applyMermaid();
