@@ -587,9 +587,9 @@
             var loginBtn = document.getElementById('loginBtn');
             if (!loginBtn) return;
             if (firebaseUser) {
-                loginBtn.innerHTML = '<span style="font-size:12px">' + firebaseUser.displayName + '</span> <button onclick="logout()" style="padding:2px 8px;border:1px solid #dee2e6;border-radius:4px;background:#fff;cursor:pointer;font-size:11px;margin-left:6px">退出</button>';
+                loginBtn.innerHTML = '<span style="font-size:12px">🔗 已同步 (匿名用户)</span>';
             } else {
-                loginBtn.innerHTML = '<button onclick="loginWithGoogle()" style="padding:4px 12px;border:none;border-radius:4px;background:#4a6cf7;color:white;cursor:pointer;font-size:12px">🔑 登录同步</button>';
+                loginBtn.innerHTML = '<span style="font-size:12px;color:#6c757d">⏳ 连接中...</span>';
             }
         }
 
@@ -602,6 +602,13 @@
                 loadFromFirebase();
             }
         });
+
+        // 自动匿名登录
+        if (!firebaseUser) {
+            auth.signInAnonymously().catch(function(error) {
+                console.log('Anonymous login failed:', error);
+            });
+        }
 
         // ============ 应用状态 ============
         let currentNote = null;
