@@ -965,22 +965,67 @@
             { id: 'project', name: '📊 项目计划', content: '# 项目计划\n\n**项目名称：** \n**负责人：** \n**开始时间：** \n**截止时间：** \n\n## 项目背景\n\n## 目标\n\n## 任务分解\n\n| 任务 | 负责人 | 截止日期 | 状态 |\n|------|--------|----------|------|\n| | | | |\n\n## 风险点\n\n## 备注\n' },
             { id: 'study', name: '📖 学习笔记', content: '# 学习笔记\n\n**主题：** \n**日期：** \n**来源：** \n\n## 核心概念\n\n## 重点内容\n\n## 疑问点\n\n## 总结\n\n## 参考资料\n\n- \n- \n' },
             { id: 'todo', name: '✅ 待办清单', content: '# 待办清单\n\n## 今日任务\n\n- [ ] \n- [ ] \n- [ ] \n\n## 本周任务\n\n- [ ] \n- [ ] \n\n## 本月任务\n\n- [ ] \n- [ ] \n' },
-            { id: 'review', name: '📝 需求文档', content: '# 需求文档\n\n**项目名称：** \n**版本号：** \n**日期：** \n\n## 项目概述\n\n## 功能需求\n\n### 功能1\n\n**需求描述：** \n**优先级：** \n**验收标准：** \n\n### 功能2\n\n**需求描述：** \n**优先级：** \n**验收标准：** \n\n## 非功能需求\n\n## 技术约束\n\n## 附录\n' }
+            { id: 'review', name: '📝 需求文档', content: '# 需求文档\n\n**项目名称：** \n**版本号：** \n**日期：** \n\n## 项目概述\n\n## 功能需求\n\n### 功能1\n\n**需求描述：** \n**优先级：** \n**验收标准：** \n\n### 功能2\n\n**需求描述：** \n**优先级：** \n**验收标准：** \n\n## 非功能需求\n\n## 技术约束\n\n## 附录\n' },
+            { id: 'bug', name: '🐛 Bug 报告', content: '# Bug 报告\n\n**发现时间：** \n**发现人：** \n**环境：** \n\n## 问题描述\n\n## 复现步骤\n\n1. \n2. \n3. \n\n## 预期结果\n\n## 实际结果\n\n## 截图\n\n## 解决方案\n\n' },
+            { id: 'diary', name: '📅 日记', content: '# 日记\n\n**日期：** \n**天气：** \n**心情：** \n\n## 今日记录\n\n## 感悟\n\n## 明日计划\n\n' },
+            { id: 'brainstorm', name: '💡 头脑风暴', content: '# 头脑风暴\n\n**主题：** \n**时间：** \n**参与人：** \n\n## 问题定义\n\n## 想法列表\n\n1. \n2. \n3. \n\n## 筛选评估\n\n| 想法 | 可行性 | 价值 | 优先级 |\n|------|--------|------|--------|\n| | | | |\n\n## 结论\n\n' },
+            { id: 'retro', name: '🔄 复盘', content: '# 复盘\n\n**项目/事件：** \n**时间范围：** \n**参与人：** \n\n## 目标回顾\n\n## 结果评估\n\n## 亮点（Keep）\n\n- \n- \n\n## 不足（Problem）\n\n- \n- \n\n## 改进措施（Try）\n\n- \n- \n' }
         ];
 
+        // 用户自定义模板
+        var CUSTOM_TEMPLATES_KEY = '***';
+        function getCustomTemplates() {
+            try {
+                return JSON.parse(localStorage.getItem(CUSTOM_TEMPLATES_KEY) || '[]');
+            } catch (e) { return []; }
+        }
+        function saveCustomTemplates(templates) {
+            localStorage.setItem(CUSTOM_TEMPLATES_KEY, JSON.stringify(templates));
+        }
+
         function showTemplatePicker() {
+            var customTemplates = getCustomTemplates();
+            var allTemplates = NOTE_TEMPLATES.concat(customTemplates.map(function(t) {
+                return { id: 'custom_' + t.id, name: '⭐ ' + t.name, content: t.content };
+            }));
             var modal = document.createElement('div');
             modal.className = 'export-modal show';
             modal.innerHTML = '<div class="export-modal-content"><h3>选择模板</h3>' +
-                NOTE_TEMPLATES.map(function(t) {
+                allTemplates.map(function(t) {
                     return '<button onclick="createNoteFromTemplate(\'' + t.id + '\')">' + t.name + '</button>';
                 }).join('') +
-                '<button class="export-cancel" onclick="this.closest(\'.export-modal\').remove()">取消</button></div>';
+                '<button class="export-cancel" onclick="this.closest(\'.export-modal\').remove()">取消</button>' +
+                '<button onclick="showSaveTemplateDialog()" style="margin-top:8px;background:#28a745;color:white">💾 保存当前为模板</button></div>';
             document.body.appendChild(modal);
+        }
+
+        function showSaveTemplateDialog() {
+            if (!currentNote) return;
+            var modal = document.querySelector('.export-modal.show');
+            if (modal) modal.remove();
+
+            var name = prompt('请输入模板名称：');
+            if (!name) return;
+            var customTemplates = getCustomTemplates();
+            var template = {
+                id: Date.now().toString(),
+                name: name,
+                content: currentNote.content
+            };
+            customTemplates.push(template);
+            saveCustomTemplates(customTemplates);
+            alert('模板已保存：' + name);
         }
 
         function createNoteFromTemplate(templateId) {
             var template = NOTE_TEMPLATES.find(function(t) { return t.id === templateId; });
+            if (!template) {
+                // 自定义模板
+                var customTemplates = getCustomTemplates();
+                var customId = templateId.replace('custom_', '');
+                var custom = customTemplates.find(function(t) { return t.id === customId; });
+                if (custom) template = { id: customId, name: '⭐ ' + custom.name, content: custom.content };
+            }
             if (!template) return;
             if (currentNote) saveCurrentNote();
             var note = {
