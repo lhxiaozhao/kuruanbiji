@@ -18,6 +18,8 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <!-- Tesseract.js OCR -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.0/dist/tesseract.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #fff; color: #333; height: 100vh; overflow: hidden; }
@@ -1505,12 +1507,50 @@
                         textarea.focus();
                         textarea.selectionStart = textarea.selectionEnd = start + insert.length;
                         autoSave();
+                        // OCR 识别图片文字
+                        doOCR(base64, textarea, start + insert.length);
                     };
                     img.src = reader.result;
                 };
                 reader.readAsDataURL(file);
             };
             input.click();
+        }
+
+        // ============ OCR 图片文字识别 ============
+        function doOCR(base64, textarea, cursorPos) {
+            if (typeof Tesseract === 'undefined') {
+                console.log('Tesseract.js not loaded');
+                return;
+            }
+            // 显示 OCR 进度
+            var progressEl = document.createElement('div');
+            progressEl.id = 'ocr-progress';
+            progressEl.style.cssText = 'position:fixed;top:20px;right:20px;background:#4a6cf7;color:white;padding:12px 20px;border-radius:8px;font-size:13px;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.15)';
+            progressEl.innerHTML = '<span>🔍 OCR 识别中...</span>';
+            document.body.appendChild(progressEl);
+
+            Tesseract.recognize(base64, 'chi_sim+eng', {
+                logger: function(m) {
+                    if (m.status === 'recognizing text') {
+                        progressEl.innerHTML = '<span>🔍 OCR 识别中... ' + Math.round(m.progress * 100) + '%</span>';
+                    }
+                }
+            }).then(function(result) {
+                var text = result.data.text.trim();
+                if (text) {
+                    var insert = '\n> ' + text.replace(/\n/g, '\n> ') + '\n';
+                    var t = textarea.value;
+                    textarea.value = t.substring(0, cursorPos) + insert + t.substring(cursorPos);
+                    autoSave();
+                }
+                progressEl.innerHTML = '<span>✅ OCR 完成</span>';
+                setTimeout(function() { progressEl.remove(); }, 2000);
+            }).catch(function(err) {
+                console.error('OCR error:', err);
+                progressEl.innerHTML = '<span>❌ OCR 失败</span>';
+                setTimeout(function() { progressEl.remove(); }, 2000);
+            });
         }
 
         // ============ 工具函数 ============
