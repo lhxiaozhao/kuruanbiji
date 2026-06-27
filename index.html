@@ -851,6 +851,8 @@
                 // 分屏模式下实时更新预览
                 if (viewMode === 'split') updatePreview();
             }, 500);
+            // 实时预览（不等待保存）
+            if (viewMode === 'split' && currentNote && !currentNote.locked) updatePreview();
         }
 
         function saveCurrentNote() {
