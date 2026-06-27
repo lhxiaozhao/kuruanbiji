@@ -539,6 +539,8 @@
                 <button class="toolbar-btn" onclick="insertMarkdown('table')" title="表格">▦</button>
                 <button class="toolbar-btn" onclick="insertMarkdown('hr')" title="分割线">—</button>
                 <button class="toolbar-btn" onclick="insertImage()" title="插入图片">🖼️</button>
+                <button class="toolbar-btn" onclick="insertMarkdown('mermaid')" title="Mermaid图表">📊</button>
+                <button class="toolbar-btn" onclick="insertMarkdown('formula')" title="数学公式">∑</button>
                 <button class="toolbar-btn" onclick="clipWebPage()" title="网页剪藏">📋</button>
                 <span class="toolbar-divider"></span>
                 <button class="toolbar-btn" onclick="togglePreview()" id="previewToggle" title="分屏预览">👁️</button>
@@ -788,10 +790,10 @@
                 if (supabaseUser.is_anonymous) {
                     loginBtn.innerHTML = '<button onclick="showLoginModal()" style="font-size:12px;color:#4a6cf7;background:none;border:1px solid #4a6cf7;border-radius:4px;padding:4px 10px;cursor:pointer">🔑 登录以同步</button>';
                 } else {
-                    loginBtn.innerHTML = '<span style="font-size:12px;color:#4a6cf7">✓ 已同步 (' + (supabaseUser.email || 'Google') + ')</span>';
+                    loginBtn.innerHTML = '<span style="font-size:12px;color:#4a6cf7">✓ 已同步 (' + (supabaseUser.email || '用户') + ')</span>';
                 }
             } else {
-                loginBtn.innerHTML = '<span style="font-size:12px;color:#6c757d">⏳ 连接中...</span>';
+                loginBtn.innerHTML = '<button onclick="showLoginModal()" style="font-size:12px;color:#4a6cf7;background:none;border:1px solid #4a6cf7;border-radius:4px;padding:4px 10px;cursor:pointer">🔑 登录以同步</button>';
             }
         }
 
@@ -2470,6 +2472,14 @@
                 case 'hr':
                     insert = '\n---\n';
                     cursorOffset = -2;
+                    break;
+                case 'mermaid':
+                    insert = '\n```mermaid\ngraph TD\n    A[开始] --> B{判断}\n    B -->|是| C[执行]\n    B -->|否| D[结束]\n```\n';
+                    cursorOffset = selected ? 0 : -8;
+                    break;
+                case 'formula':
+                    insert = '\n$E = mc^2$\n';
+                    cursorOffset = selected ? 0 : -6;
                     break;
             }
 
