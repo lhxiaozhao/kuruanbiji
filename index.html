@@ -571,7 +571,10 @@
             document.getElementById('importNote').addEventListener('click', importNote);
             document.getElementById('searchInput').addEventListener('input', function() { renderNoteList(); });
             document.getElementById('noteTitle').addEventListener('input', autoSave);
-            document.getElementById('noteContent').addEventListener('input', function() { autoSave(); updateWordCount(); });
+            document.getElementById('noteContent').addEventListener('input', function() {
+                autoSave();
+                updateWordCount();
+            });
             document.getElementById('saveNote').addEventListener('click', saveCurrentNote);
             document.getElementById('toggleStar').addEventListener('click', toggleStar);
             document.getElementById('pinNote').addEventListener('click', pinNote);
