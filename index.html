@@ -580,6 +580,7 @@
             <button onclick="exportAs('html')">📋 HTML (.html)</button>
             <button onclick="exportAs('txt')">📝 纯文本 (.txt)</button>
             <button onclick="exportAs('pdf')">📑 PDF</button>
+            <button onclick="shareNote()">🔗 分享链接</button>
             <button class="export-cancel" onclick="closeExportModal()">取消</button>
         </div>
     </div>
@@ -813,6 +814,14 @@
 
         // ============ 初始化 ============
         function init() {
+            // 检查是否是分享链接
+            var params = new URLSearchParams(window.location.search);
+            var shareId = params.get('share');
+            if (shareId) {
+                loadSharedNote(shareId);
+                return;
+            }
+
             // 加载主题
             const theme = localStorage.getItem('theme') || 'light';
             document.documentElement.setAttribute('data-theme', theme);
@@ -1905,6 +1914,59 @@
             a.click();
             URL.revokeObjectURL(url);
             closeExportModal();
+        }
+
+        // ============ 分享笔记 ============
+        function shareNote() {
+            if (!currentNote) return;
+            var shareUrl = window.location.origin + window.location.pathname + '?share=' + currentNote.id;
+            var modal = document.createElement('div');
+            modal.className = 'export-modal show';
+            modal.innerHTML = '<div class="export-modal-content"><h3>🔗 分享笔记</h3>' +
+                '<p style="font-size:13px;color:#6c757d;margin-bottom:16px">复制链接分享给他人，对方可查看笔记内容（只读）</p>' +
+                '<input type="text" id="shareUrl" value="' + shareUrl + '" style="width:100%;padding:10px;border:1px solid #dee2e6;border-radius:6px;font-size:13px;outline:none" readonly>' +
+                '<button onclick="copyShareUrl()" style="margin-top:12px;background:#4a6cf7;color:white">📋 复制链接</button>' +
+                '<button class="export-cancel" onclick="this.closest(\'.export-modal\').remove()">关闭</button></div>';
+            document.body.appendChild(modal);
+        }
+
+        function copyShareUrl() {
+            var input = document.getElementById('shareUrl');
+            input.select();
+            try {
+                document.execCommand('copy');
+                alert('链接已复制到剪贴板');
+            } catch (e) {
+                navigator.clipboard.writeText(input.value).then(function() {
+                    alert('链接已复制到剪贴板');
+                });
+            }
+        }
+
+        // ============ 查看分享笔记 ============
+        function loadSharedNote(noteId) {
+            var notes = getNotes();
+            var note = notes.find(function(n) { return n.id === noteId && !n.deleted; });
+            if (!note) {
+                document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column"><h1>📝 笔记不存在</h1><p>该笔记已被删除或不存在</p><a href="' + window.location.pathname + '" style="color:#4a6cf7">返回主页</a></div>';
+                return;
+            }
+            currentNote = note;
+            document.getElementById('noteTitle').value = note.title;
+            document.getElementById('noteTitle').disabled = true;
+            document.getElementById('noteContent').value = note.content;
+            document.getElementById('noteContent').disabled = true;
+            document.getElementById('preview').innerHTML = '<h1>' + escapeHtml(note.title) + '</h1>' + parseMarkdown(note.content, notes);
+            document.getElementById('preview').classList.remove('hidden');
+            // 隐藏编辑工具栏
+            document.querySelector('.editor-toolbar').style.display = 'none';
+            document.querySelector('.editor-header').style.display = 'none';
+            document.querySelector('.editor-footer').style.display = 'none';
+            // 显示分享提示
+            var shareBanner = document.createElement('div');
+            shareBanner.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#4a6cf7;color:white;padding:12px 24px;border-radius:8px;font-size:14px;z-index:1000';
+            shareBanner.innerHTML = '👀 查看模式 · <a href="' + window.location.pathname + '" style="color:white;text-decoration:underline">返回主页</a>';
+            document.body.appendChild(shareBanner);
         }
 
         function insertImage() {
