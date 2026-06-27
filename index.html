@@ -8,6 +8,9 @@
     <meta name="theme-color" content="#4a6cf7">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="酷软笔记">
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #fff; color: #333; height: 100vh; overflow: hidden; }
@@ -366,6 +369,7 @@
                     <button id="newNote">+</button>
                 </div>
             </div>
+            <div id="loginBtn" style="padding:8px 16px;border-bottom:1px solid #dee2e6"></div>
             <div class="search-box">
                 <input type="text" id="searchInput" placeholder="搜索笔记...">
             </div>
@@ -500,9 +504,26 @@
     </div>
 
     <script>
+        // ============ Firebase 配置 ============
+        const firebaseConfig = {
+            apiKey: "AIzaSyAf3O-rnOGaEkHiloBFIvDgG-D8x2NHC2Y",
+            authDomain: "kuruanbiji.firebaseapp.com",
+            databaseURL: "https://kuruanbiji-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "kuruanbiji",
+            storageBucket: "kuruanbiji.firebasestorage.app",
+            messagingSenderId: "1059282975362",
+            appId: "1:1059282975362:web:06965378917edb7248129b",
+            measurementId: "G-N2B6TLVGFC"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.database();
+
         // ============ 存储层 ============
         const STORAGE_KEY = 'coolsoft-notes-v3';
-        
+        let firebaseUser = null;
+        let syncTimer = null;
+
         function getNotes() {
             try {
                 const data = localStorage.getItem(STORAGE_KEY);
@@ -511,7 +532,76 @@
         }
         function saveNotes(notes) {
             try { localStorage.setItem(STORAGE_KEY, JSON.stringify(notes)); } catch (e) {}
+            // 同步到 Firebase
+            if (firebaseUser) syncToFirebase(notes);
         }
+
+        // ============ Firebase 同步 ============
+        function syncToFirebase(notes) {
+            if (!firebaseUser) return;
+            if (syncTimer) clearTimeout(syncTimer);
+            syncTimer = setTimeout(function() {
+                db.ref('users/' + firebaseUser.uid + '/notes').set(notes);
+            }, 1000);
+        }
+
+        function loadFromFirebase() {
+            if (!firebaseUser) return;
+            db.ref('users/' + firebaseUser.uid + '/notes').once('value').then(function(snapshot) {
+                var data = snapshot.val();
+                if (data) {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+                    renderNoteList();
+                    if (currentNote) renderEditor();
+                }
+            });
+        }
+
+        function watchFirebase() {
+            if (!firebaseUser) return;
+            db.ref('users/' + firebaseUser.uid + '/notes').on('value', function(snapshot) {
+                var data = snapshot.val();
+                if (data) {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+                    renderNoteList();
+                    if (currentNote) renderEditor();
+                }
+            });
+        }
+
+        function loginWithGoogle() {
+            var provider = new firebase.auth.GoogleAuthProvider();
+            auth.signInWithPopup(provider).catch(function(error) {
+                alert('登录失败: ' + error.message);
+            });
+        }
+
+        function logout() {
+            auth.signOut().then(function() {
+                firebaseUser = null;
+                updateAuthUI();
+            });
+        }
+
+        function updateAuthUI() {
+            var loginBtn = document.getElementById('loginBtn');
+            if (!loginBtn) return;
+            if (firebaseUser) {
+                loginBtn.innerHTML = '<span style="font-size:12px">' + firebaseUser.displayName + '</span> <button onclick="logout()" style="padding:2px 8px;border:1px solid #dee2e6;border-radius:4px;background:#fff;cursor:pointer;font-size:11px;margin-left:6px">退出</button>';
+            } else {
+                loginBtn.innerHTML = '<button onclick="loginWithGoogle()" style="padding:4px 12px;border:none;border-radius:4px;background:#4a6cf7;color:white;cursor:pointer;font-size:12px">🔑 登录同步</button>';
+            }
+        }
+
+        // 监听登录状态
+        auth.onAuthStateChanged(function(user) {
+            firebaseUser = user;
+            updateAuthUI();
+            if (user) {
+                watchFirebase();
+                loadFromFirebase();
+            }
+        });
 
         // ============ 应用状态 ============
         let currentNote = null;
@@ -529,6 +619,9 @@
             const theme = localStorage.getItem('theme') || 'light';
             document.documentElement.setAttribute('data-theme', theme);
             document.getElementById('themeToggle').textContent = theme === 'dark' ? '🌙' : '☀️';
+
+            // 初始化 Firebase 登录 UI
+            updateAuthUI();
 
             // 注册 Service Worker
             if ('serviceWorker' in navigator) {
