@@ -2297,7 +2297,7 @@
                         var textarea = document.getElementById('noteContent');
                         var start = textarea.selectionStart;
                         var text = textarea.value;
-                        var insert = '\n![image](data:image/jpeg;base64,' + base64.substring(base64.indexOf(',') + 1) + ')\n';
+                        var insert = '\n![🖼️ Image](data:image/jpeg;base64,' + base64.substring(base64.indexOf(',') + 1) + ')\n';
                         textarea.value = text.substring(0, start) + insert + text.substring(start);
                         textarea.focus();
                         textarea.selectionStart = textarea.selectionEnd = start + insert.length;
