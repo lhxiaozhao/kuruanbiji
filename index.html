@@ -10,7 +10,7 @@
     <meta name="apple-mobile-web-app-title" content="酷软笔记">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.48.1/dist/umd/supabase.min.js"></script>
     <!-- Syntax Highlighting -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/atom-one-dark.min.css">
     <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/highlight.min.js"></script>
     <!-- Mermaid -->
     <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
@@ -195,8 +195,49 @@
         #noteContent h1, #noteContent h2, #noteContent h3 { margin: 12px 0 8px; }
         #noteContent blockquote { border-left: 3px solid #4a6cf7; padding-left: 12px; color: #6c757d; margin: 8px 0; }
         #noteContent code { background: #f0f0f0; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
-        #noteContent pre { background: #f0f0f0; padding: 12px; border-radius: 6px; overflow-x: auto; }
-        #noteContent pre code { background: transparent; padding: 0; }
+        #noteContent pre {
+            position: relative;
+            background: #1e1e1e;
+            padding: 0;
+            border-radius: 8px;
+            overflow: hidden;
+            margin: 12px 0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+        #noteContent pre .code-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 12px;
+            background: #2d2d2d;
+            border-bottom: 1px solid #3d3d3d;
+            font-size: 11px;
+            color: #999;
+        }
+        #noteContent pre .code-header .lang-label {
+            text-transform: uppercase;
+            font-weight: 500;
+        }
+        #noteContent pre .code-header .copy-btn {
+            background: transparent;
+            border: none;
+            color: #999;
+            cursor: pointer;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+        }
+        #noteContent pre .code-header .copy-btn:hover {
+            background: #3d3d3d;
+            color: #fff;
+        }
+        #noteContent pre code {
+            display: block;
+            background: transparent;
+            padding: 12px;
+            overflow-x: auto;
+            color: #abb2bf;
+        }
         #noteContent table { width: 100%; border-collapse: collapse; margin: 8px 0; }
         #noteContent th, #noteContent td { border: 1px solid #dee2e6; padding: 6px 10px; }
         #noteContent th { background: #f8f9fa; font-weight: 600; }
@@ -206,7 +247,6 @@
         [data-theme="dark"] #noteContent img { filter: brightness(0.9); }
         [data-theme="dark"] #noteContent blockquote { border-color: #4a6cf7; color: #adb5bd; }
         [data-theme="dark"] #noteContent code { background: #2d3748; }
-        [data-theme="dark"] #noteContent pre { background: #2d3748; }
         [data-theme="dark"] #noteContent th { background: #2d3748; }
         [data-theme="dark"] #noteContent th, #noteContent td { border-color: #2d3748; }
         #noteContent:empty::before { content: attr(placeholder); color: #adb5bd; pointer-events: none; }
@@ -217,9 +257,57 @@
         #preview h1, #preview h2, #preview h3 { margin: 20px 0 10px; }
         #preview p { margin: 10px 0; }
         #preview code { background: #f0f0f0; padding: 2px 6px; border-radius: 4px; font-size: 13px; font-family: 'SF Mono', 'Monaco', monospace; }
-        #preview pre { background: #f0f0f0; padding: 16px; border-radius: 6px; overflow-x: auto; }
-        #preview pre code { background: transparent; padding: 0; border-radius: 0; }
-        #preview pre code.hljs { background: transparent; padding: 0; border-radius: 0; }
+        #preview pre {
+            position: relative;
+            background: #1e1e1e;
+            padding: 0;
+            border-radius: 8px;
+            overflow: hidden;
+            margin: 16px 0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+        #preview pre .code-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 16px;
+            background: #2d2d2d;
+            border-bottom: 1px solid #3d3d3d;
+            font-size: 12px;
+            color: #999;
+        }
+        #preview pre .code-header .lang-label {
+            text-transform: uppercase;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+        #preview pre .code-header .copy-btn {
+            background: transparent;
+            border: none;
+            color: #999;
+            cursor: pointer;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+        #preview pre .code-header .copy-btn:hover {
+            background: #3d3d3d;
+            color: #fff;
+        }
+        #preview pre code {
+            display: block;
+            background: transparent;
+            padding: 16px;
+            border-radius: 0;
+            overflow-x: auto;
+            color: #abb2bf;
+        }
+        #preview pre code.hljs {
+            background: transparent;
+            padding: 16px;
+            border-radius: 0;
+        }
         /* Mermaid */
         #preview .mermaid { background: #fff; padding: 16px; border-radius: 6px; margin: 16px 0; text-align: center; }
         /* KaTeX */
@@ -406,7 +494,6 @@
         [data-theme="dark"] #noteContent { background: #1a1a2e; color: #e9ecef; }
         [data-theme="dark"] #preview { background: #1a1a2e; color: #e9ecef; }
         [data-theme="dark"] #preview code { background: #16213e; }
-        [data-theme="dark"] #preview pre { background: #16213e; }
         [data-theme="dark"] #preview pre code { background: transparent; }
         [data-theme="dark"] #preview blockquote { color: #adb5bd; }
         [data-theme="dark"] #preview th, [data-theme="dark"] #preview td { border-color: #2d3748; }
@@ -1340,6 +1427,27 @@
             }, 500);
             // 实时预览（不等待保存）
             if (viewMode === 'split' && currentNote && !currentNote.locked) updatePreview();
+        }
+
+        // 复制代码块
+        function copyCodeBlock(btn) {
+            var pre = btn.closest('pre');
+            var code = pre.querySelector('code');
+            var text = code.innerText;
+            navigator.clipboard.writeText(text).then(function() {
+                btn.textContent = '已复制';
+                setTimeout(function() { btn.textContent = '复制'; }, 2000);
+            }).catch(function() {
+                // Fallback for older browsers
+                var textarea = document.createElement('textarea');
+                textarea.value = text;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                btn.textContent = '已复制';
+                setTimeout(function() { btn.textContent = '复制'; }, 2000);
+            });
         }
 
         function saveCurrentNote() {
@@ -2664,7 +2772,13 @@
             html = html.replace(/^```(\w*)\n([\s\S]*?)```$/gm, function(m, lang, code) {
                 var escaped = code.replace(/</g, '&lt;').replace(/>/g, '&gt;');
                 var langClass = lang ? ' class="language-' + lang + '"' : '';
-                return '<pre><code' + langClass + '>' + escaped + '</code></pre>';
+                var langLabel = lang || 'Code';
+                return '<pre>' +
+                    '<div class="code-header">' +
+                        '<span class="lang-label">' + langLabel + '</span>' +
+                        '<button class="copy-btn" onclick="copyCodeBlock(this)">复制</button>' +
+                    '</div>' +
+                    '<code' + langClass + '>' + escaped + '</code></pre>';
             });
 
             // 标题
@@ -2747,6 +2861,12 @@
         // ============ 渲染增强 ============
         function applySyntaxHighlighting() {
             document.querySelectorAll('#preview pre code').forEach(function(block) {
+                if (!block.classList.contains('hljs')) {
+                    hljs.highlightElement(block);
+                }
+            });
+            // 编辑器侧也要高亮
+            document.querySelectorAll('#noteContent pre code').forEach(function(block) {
                 if (!block.classList.contains('hljs')) {
                     hljs.highlightElement(block);
                 }
