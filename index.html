@@ -47,6 +47,42 @@
         .search-box { padding: 12px 16px; border-bottom: 1px solid #dee2e6; }
         #searchInput { width: 100%; padding: 8px 12px; border: 1px solid #dee2e6; border-radius: 6px; font-size: 14px; outline: none; }
         #searchInput:focus { border-color: #4a6cf7; }
+        .search-suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #fff;
+            border: 1px solid #dee2e6;
+            border-top: none;
+            border-radius: 0 0 6px 6px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 100;
+            display: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .search-suggestions.show { display: block; }
+        .search-suggestion {
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 13px;
+            color: #333;
+            transition: background 0.15s;
+        }
+        .search-suggestion:hover { background: #f0f2f5; }
+        .search-suggestion .sug-type {
+            font-size: 10px;
+            color: #888;
+            margin-right: 6px;
+        }
+        .search-suggestion .sug-text { color: #4a6cf7; }
+        [data-theme="dark"] .search-suggestions { background: #1a1a2e; border-color: #2d3748; }
+        [data-theme="dark"] .search-suggestion { color: #e9ecef; }
+        [data-theme="dark"] .search-suggestion:hover { background: #16213e; }
+        [data-theme="dark"] .search-suggestion .sug-type { color: #6c757d; }
+        [data-theme="dark"] .advanced-filter input { background: #1a1a2e; color: #e9ecef; border-color: #2d3748; }
+        [data-theme="dark"] .advanced-filter button:nth-child(2) { background: #16213e; color: #adb5bd; border-color: #2d3748; }
 
         .sidebar-toolbar { display: flex; justify-content: space-between; align-items: center; padding: 8px 16px; border-bottom: 1px solid #dee2e6; gap: 4px; }
         .toolbar-left, .toolbar-right { display: flex; gap: 4px; align-items: center; flex-wrap: nowrap; }
@@ -834,6 +870,27 @@
             <div id="loginBtn" style="padding:8px 16px;border-bottom:1px solid #dee2e6"></div>
             <div class="search-box">
                 <input type="text" id="searchInput" placeholder="搜索笔记...">
+                <div id="searchSuggestions" class="search-suggestions"></div>
+            </div>
+            <div class="advanced-filter" id="advancedFilter" style="display:none;padding:8px 16px;border-bottom:1px solid #dee2e6">
+                <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
+                    <span style="font-size:11px;color:#888">日期:</span>
+                    <input type="date" id="filterDateFrom" style="font-size:11px;padding:3px 6px;border:1px solid #dee2e6;border-radius:4px;background:#fff;color:#333">
+                    <span style="font-size:11px;color:#888">至</span>
+                    <input type="date" id="filterDateTo" style="font-size:11px;padding:3px 6px;border:1px solid #dee2e6;border-radius:4px;background:#fff;color:#333">
+                </div>
+                <div style="display:flex;gap:6px;align-items:center">
+                    <span style="font-size:11px;color:#888">标签:</span>
+                    <input type="text" id="filterTag" placeholder="输入标签" style="font-size:11px;padding:3px 6px;border:1px solid #dee2e6;border-radius:4px;background:#fff;color:#333;flex:1">
+                </div>
+                <div style="display:flex;gap:4px;margin-top:6px">
+                    <button onclick="applyAdvancedFilter()" style="flex:1;padding:5px;border:none;border-radius:4px;background:#4a6cf7;color:white;font-size:11px;cursor:pointer">应用</button>
+                    <button onclick="clearAdvancedFilter()" style="flex:1;padding:5px;border:1px solid #dee2e6;border-radius:4px;background:#fff;color:#666;font-size:11px;cursor:pointer">清除</button>
+                </div>
+            </div>
+            <div style="padding:4px 16px;border-bottom:1px solid #dee2e6;display:flex;justify-content:space-between;align-items:center">
+                <button onclick="toggleAdvancedFilter()" style="background:none;border:none;color:#4a6cf7;font-size:11px;cursor:pointer;padding:2px 4px">⚙️ 高级筛选</button>
+                <span id="searchCount" style="font-size:10px;color:#888"></span>
             </div>
             <div class="sidebar-toolbar">
                 <div class="toolbar-left">
@@ -1276,6 +1333,7 @@
         let currentNote = null;
         let autoSaveTimer = null;
         let currentFilter = 'all';
+        var searchDebounceTimer = null;
         let deferredInstallPrompt = null;
         let selectedNotes = new Set();
         let longPressTimer = null;
@@ -1371,7 +1429,10 @@
             document.getElementById('graphBtn').addEventListener('click', openGraphModal);
             document.getElementById('toggleSidebar').addEventListener('click', toggleSidebar);
             document.getElementById('importNote').addEventListener('click', importNote);
-            document.getElementById('searchInput').addEventListener('input', function() { renderNoteList(); });
+            document.getElementById('searchInput').addEventListener('input', function() {
+                if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+                searchDebounceTimer = setTimeout(renderNoteList, 200);
+            });
             document.getElementById('noteTitle').addEventListener('input', autoSave);
             document.getElementById('noteContent').addEventListener('input', function() {
                 autoSave();
@@ -3398,10 +3459,30 @@
                 });
             }
 
-            // 搜索建议
-            var searchSuggestions = [];
-            if (keyword && keyword.length >= 2) {
-                searchSuggestions = getSearchSuggestions(keyword, notes);
+            // 高级筛选 - 日期范围
+            var advFilters = getAdvancedFilters();
+            if (advFilters.dateFrom) {
+                var from = new Date(advFilters.dateFrom).getTime();
+                notes = notes.filter(function(n) { return new Date(n.updatedAt).getTime() >= from; });
+            }
+            if (advFilters.dateTo) {
+                var to = new Date(advFilters.dateTo + 'T23:59:59').getTime();
+                notes = notes.filter(function(n) { return new Date(n.updatedAt).getTime() <= to; });
+            }
+            if (advFilters.tag) {
+                var tagLower = advFilters.tag.toLowerCase();
+                notes = notes.filter(function(n) {
+                    var tags = extractTags(n.content);
+                    return tags.some(function(t) { return t.toLowerCase().includes(tagLower); });
+                });
+            }
+
+            // 更新搜索结果计数
+            var countEl = document.getElementById('searchCount');
+            if (countEl && keyword) {
+                countEl.textContent = notes.length + ' 条结果';
+            } else if (countEl) {
+                countEl.textContent = '';
             }
 
             // 搜索建议
@@ -3409,6 +3490,7 @@
             if (keyword && keyword.length >= 2) {
                 searchSuggestions = getSearchSuggestions(keyword, notes);
             }
+            showSearchSuggestions(searchSuggestions);
 
             // 置顶笔记排前面
             notes.sort(function(a, b) {
@@ -3473,6 +3555,70 @@
             var match = text.substring(index, index + keyword.length);
             var after = text.substring(index + keyword.length);
             return before + '<mark style="background:#ffc107;padding:0 2px;border-radius:2px">' + match + '</mark>' + after;
+        }
+
+        function showSearchSuggestions(suggestions) {
+            var el = document.getElementById('searchSuggestions');
+            if (!el) return;
+            if (!suggestions || suggestions.length === 0) {
+                el.classList.remove('show');
+                return;
+            }
+            el.innerHTML = suggestions.map(function(s) {
+                var typeLabel = s.type === 'title' ? '📝' : '#';
+                return '<div class="search-suggestion" onclick="applySearchSuggestion('' + s.text.replace(/'/g, "\'") + '')">' +
+                    '<span class="sug-type">' + typeLabel + '</span>' +
+                    '<span class="sug-text">' + s.text + '</span>' +
+                    '</div>';
+            }).join('');
+            el.classList.add('show');
+        }
+
+        function applySearchSuggestion(text) {
+            var input = document.getElementById('searchInput');
+            if (input) {
+                input.value = text;
+                renderNoteList();
+            }
+            var sugEl = document.getElementById('searchSuggestions');
+            if (sugEl) sugEl.classList.remove('show');
+        }
+
+        // 点击外部关闭搜索建议
+        document.addEventListener('click', function(e) {
+            var sugEl = document.getElementById('searchSuggestions');
+            var input = document.getElementById('searchInput');
+            if (sugEl && input && !input.contains(e.target) && !sugEl.contains(e.target)) {
+                sugEl.classList.remove('show');
+            }
+        });
+
+        function toggleAdvancedFilter() {
+            var el = document.getElementById('advancedFilter');
+            if (el.style.display === 'none') {
+                el.style.display = 'block';
+            } else {
+                el.style.display = 'none';
+            }
+        }
+
+        function applyAdvancedFilter() {
+            renderNoteList();
+        }
+
+        function clearAdvancedFilter() {
+            document.getElementById('filterDateFrom').value = '';
+            document.getElementById('filterDateTo').value = '';
+            document.getElementById('filterTag').value = '';
+            renderNoteList();
+        }
+
+        function getAdvancedFilters() {
+            return {
+                dateFrom: document.getElementById('filterDateFrom').value,
+                dateTo: document.getElementById('filterDateTo').value,
+                tag: document.getElementById('filterTag').value.trim()
+            };
         }
 
         function getSearchSuggestions(keyword, notes) {
