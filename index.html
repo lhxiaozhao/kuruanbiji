@@ -190,7 +190,7 @@
         .editor-body.split #noteContent { border-right: 1px solid #dee2e6; }
         [data-theme="dark"] .editor-body.split #noteContent { border-color: #2d3748; }
         #noteContent { width: 100%; height: 100%; padding: 24px; border: none; background: #fff; font-size: 15px; line-height: 1.7; outline: none; font-family: 'SF Mono', 'Monaco', monospace; overflow-y: auto; }
-        #noteContent img { max-width: 100%; height: auto; display: block; margin: 8px 0; border-radius: 4px; }
+        #noteContent img { max-width: 100%; height: auto; display: block; margin: 8px 0; border-radius: 4px; resize: both; overflow: hidden; cursor: default; }
         #noteContent p { margin: 8px 0; }
         #noteContent h1, #noteContent h2, #noteContent h3 { margin: 12px 0 8px; }
         #noteContent blockquote { border-left: 3px solid #4a6cf7; padding-left: 12px; color: #6c757d; margin: 8px 0; }
@@ -1603,7 +1603,7 @@
             updateLastSaved();
             var preview = document.getElementById('preview');
             if (!preview.classList.contains('hidden')) {
-                preview.innerHTML = currentNote.locked ? '<p style="color:#dc3545;text-align:center;padding:40px">🔒 笔记已锁定</p>' : renderCommentsInPreview(currentNote.content);
+                preview.innerHTML = currentNote.locked ? '<p style="color:#dc3545;text-align:center;padding:40px">🔒 笔记已锁定</p>' : renderCommentsInPreview(parseMarkdown(currentNote.content, getNotes()));
                 // 应用增强渲染
                 applySyntaxHighlighting();
                 applyMermaid();
@@ -2932,7 +2932,7 @@
                 if (currentNote.locked) {
                     preview.innerHTML = '<p style="color:#dc3545;text-align:center;padding:40px">🔒 笔记已锁定</p>';
                 } else {
-                    preview.innerHTML = '<h1>' + escapeHtml(currentNote.title) + '</h1>' + renderCommentsInPreview(currentNote.content);
+                    preview.innerHTML = '<h1>' + escapeHtml(currentNote.title) + '</h1>' + renderCommentsInPreview(parseMarkdown(currentNote.content, getNotes()));
                     // 应用增强渲染
                     applySyntaxHighlighting();
                     applyMermaid();
