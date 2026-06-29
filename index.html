@@ -1165,7 +1165,6 @@
                     );
                     showSyncStatus('synced', '同步完成 ✓');
                 } catch (err) {
-                    console.error('Sync error:', err);
                     showSyncStatus('error', '同步失败: ' + (err.message || '网络错误'));
                 }
             }, 1000);
@@ -1209,7 +1208,6 @@
                     showSyncStatus('synced', '同步完成 ✓');
                 }
             } catch (err) {
-                console.error('Load error:', err);
                 showSyncStatus('error', '同步失败: ' + (err.message || '网络错误'));
             }
         }
@@ -1404,8 +1402,7 @@
         // 自动匿名登录
         if (!supabaseUser) {
             supabase.auth.signInAnonymously().catch(function(error) {
-                console.log('Anonymous login failed:', error);
-            });
+                });
         }
 
 
@@ -1441,10 +1438,8 @@
             // 注册 Service Worker
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.register('service-worker.js').then(function(reg) {
-                    console.log('SW registered:', reg.scope);
-                }).catch(function(err) {
-                    console.log('SW registration failed:', err);
-                });
+                    }).catch(function(err) {
+                    });
             }
 
             // PWA 安装监听
@@ -1522,7 +1517,7 @@
             document.getElementById('toggleStar').addEventListener('click', toggleStar);
             document.getElementById('pinNote').addEventListener('click', pinNote);
             document.getElementById('lockNote').addEventListener('click', function() {
-                lockNote().catch(function(e) { console.error('Lock error:', e); });
+                lockNote().catch(function(e) { });
             });
             document.getElementById('exportNote').addEventListener('click', openExportModal);
             document.getElementById('printNote').addEventListener('click', printNote);
@@ -3069,7 +3064,6 @@
         // ============ OCR 图片文字识别 ============
         function doOCR(base64) {
             if (typeof Tesseract === 'undefined') {
-                console.log('Tesseract.js not loaded');
                 return;
             }
             // 移除旧进度条
@@ -3098,7 +3092,6 @@
                 progressEl.innerHTML = '<span>✅ OCR 完成</span>';
                 setTimeout(function() { progressEl.remove(); }, 2000);
             }).catch(function(err) {
-                console.error('OCR error:', err);
                 progressEl.innerHTML = '<span>❌ OCR 失败</span>';
                 setTimeout(function() { progressEl.remove(); }, 2000);
             });
@@ -3158,7 +3151,6 @@
                     progressEl.innerHTML = '<span>✅ 剪藏完成</span>';
                     setTimeout(function() { progressEl.remove(); }, 2000);
                 } catch (err) {
-                    console.error('Clip error:', err);
                     progressEl.innerHTML = '<span>❌ 剪藏失败</span>';
                     setTimeout(function() { progressEl.remove(); }, 2000);
                 }
