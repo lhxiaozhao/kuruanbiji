@@ -1061,6 +1061,7 @@
                 </div>
                 <div class="footer-right">
                     <span id="wordCount">0 字</span>
+                    <span id="readingTime">阅读 0 分钟</span>
                     <button id="statsBtn" title="统计">📊</button>
                 </div>
             </div>
@@ -2284,6 +2285,8 @@
             var lines = text ? text.split('\n').length : 0;
             var words = text.trim() ? text.trim().split(/\s+/).length : 0;
             document.getElementById('wordCount').textContent = words + ' 词 · ' + chars + ' 字 · ' + lines + ' 行';
+                var readTime = Math.max(1, Math.ceil(chars / 300));
+                document.getElementById('readingTime').textContent = '阅读 ' + readTime + ' 分钟';
         }
 
         // ============ 编辑器操作 ============
