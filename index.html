@@ -82,6 +82,39 @@
         [data-theme="dark"] .search-suggestion:hover { background: #16213e; }
         [data-theme="dark"] .search-suggestion .sug-type { color: #6c757d; }
         [data-theme="dark"] .advanced-filter input { background: #1a1a2e; color: #e9ecef; border-color: #2d3748; }
+        /* 同步状态指示器 */
+        .sync-status {
+            position: fixed;
+            bottom: 16px;
+            right: 16px;
+            padding: 8px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            z-index: 2500;
+            display: none;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+            transition: all 0.3s;
+            backdrop-filter: blur(8px);
+        }
+        .sync-status.show { display: flex; }
+        .sync-status.syncing { background: rgba(74,108,247,0.15); color: #4a6cf7; border: 1px solid rgba(74,108,247,0.3); }
+        .sync-status.synced { background: rgba(40,167,69,0.15); color: #28a745; border: 1px solid rgba(40,167,69,0.3); }
+        .sync-status.error { background: rgba(220,53,69,0.15); color: #dc3545; border: 1px solid rgba(220,53,69,0.3); }
+        .sync-status.offline { background: rgba(255,193,7,0.15); color: #ffc107; border: 1px solid rgba(255,193,7,0.3); }
+        .sync-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+        .sync-status.syncing .sync-dot { animation: pulse 1s infinite; }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        [data-theme="dark"] .sync-status { background: rgba(26,26,46,0.9); }
         [data-theme="dark"] .advanced-filter button:nth-child(2) { background: #16213e; color: #adb5bd; border-color: #2d3748; }
 
         .sidebar-toolbar { display: flex; justify-content: space-between; align-items: center; padding: 8px 16px; border-bottom: 1px solid #dee2e6; gap: 4px; }
@@ -1028,6 +1061,12 @@
         </main>
     </div>
 
+    <!-- 同步状态指示器 -->
+    <div id="syncStatus" class="sync-status">
+        <span class="sync-dot"></span>
+        <span id="syncStatusText">同步中...</span>
+    </div>
+
     <!-- 导出弹窗 -->
     <div class="export-modal" id="exportModal">
         <div class="export-modal-content">
@@ -1093,8 +1132,13 @@
         // ============ Supabase 同步 ============
         async function syncToSupabase(notes) {
             if (!supabaseUser) return;
+            if (!navigator.onLine) {
+                showSyncStatus('offline', '离线模式，联网后自动同步');
+                return;
+            }
             if (syncTimer) clearTimeout(syncTimer);
             syncTimer = setTimeout(async function() {
+                showSyncStatus('syncing', '同步中...');
                 try {
                     await supabase.from('notes').upsert(
                         notes.map(function(n) {
@@ -1119,14 +1163,17 @@
                         }),
                         { onConflict: 'id' }
                     );
+                    showSyncStatus('synced', '同步完成 ✓');
                 } catch (err) {
                     console.error('Sync error:', err);
+                    showSyncStatus('error', '同步失败: ' + (err.message || '网络错误'));
                 }
             }, 1000);
         }
 
         async function loadFromSupabase() {
             if (!supabaseUser) return;
+            if (!navigator.onLine) return;
             try {
                 const { data, error } = await supabase
                     .from('notes')
@@ -1159,9 +1206,11 @@
                     localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
                     renderNoteList();
                     if (currentNote) renderEditor();
+                    showSyncStatus('synced', '同步完成 ✓');
                 }
             } catch (err) {
                 console.error('Load error:', err);
+                showSyncStatus('error', '同步失败: ' + (err.message || '网络错误'));
             }
         }
 
@@ -1205,11 +1254,41 @@
                 .on('postgres_changes',
                     { event: '*', schema: 'public', table: 'notes', filter: 'user_id=eq.' + supabaseUser.id },
                     function() {
+                        showSyncStatus('syncing', '同步中...');
                         loadFromSupabase();
                     }
                 )
                 .subscribe();
         }
+
+        function showSyncStatus(type, text) {
+            var el = document.getElementById('syncStatus');
+            var textEl = document.getElementById('syncStatusText');
+            if (!el || !textEl) return;
+            el.className = 'sync-status show ' + type;
+            textEl.textContent = text;
+            clearTimeout(syncStatusTimer);
+            syncStatusTimer = setTimeout(function() {
+                el.classList.remove('show');
+            }, 3000);
+        }
+
+        var syncStatusTimer = null;
+
+        // 离线检测
+        function checkOnlineStatus() {
+            if (!navigator.onLine) {
+                showSyncStatus('offline', '离线模式，联网后自动同步');
+            }
+        }
+
+        window.addEventListener('offline', checkOnlineStatus);
+        window.addEventListener('online', function() {
+            showSyncStatus('syncing', '恢复联网，同步中...');
+            if (supabaseUser) {
+                syncToSupabase(getNotes());
+            }
+        });
 
         async function loginWithEmail(email, password) {
             try {
@@ -1246,6 +1325,7 @@
                     loginBtn.innerHTML = '<button onclick="showLoginModal()" style="font-size:12px;color:#4a6cf7;background:none;border:1px solid #4a6cf7;border-radius:4px;padding:4px 10px;cursor:pointer">🔑 登录以同步</button>';
                 } else {
                     loginBtn.innerHTML = '<span style="font-size:12px;color:#4a6cf7">✓ 已同步 (' + (supabaseUser.email || '用户') + ')</span>';
+                showSyncStatus('synced', '已连接');
                 }
             } else {
                 loginBtn.innerHTML = '<button onclick="showLoginModal()" style="font-size:12px;color:#4a6cf7;background:none;border:1px solid #4a6cf7;border-radius:4px;padding:4px 10px;cursor:pointer">🔑 登录以同步</button>';
