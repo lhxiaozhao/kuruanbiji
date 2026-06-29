@@ -269,7 +269,7 @@
         #preview { overflow-y: auto; }
         .editor-body.split #noteContent,
         .editor-body.split #preview { overflow-y: auto; }
-        #noteContent img { max-width: 100%; height: auto; display: block; margin: 8px 0; border-radius: 4px; resize: both; overflow: hidden; cursor: default; }
+        #noteContent img { max-width: 100%; height: auto; display: block; margin: 8px 0; border-radius: 4px; resize: both; cursor: default; }
         #noteContent p { margin: 8px 0; }
         #noteContent h1, #noteContent h2, #noteContent h3 { margin: 12px 0 8px; }
         #noteContent blockquote { border-left: 3px solid #4a6cf7; padding-left: 12px; color: #6c757d; margin: 8px 0; }
@@ -3386,7 +3386,7 @@
                     insertAtCursor(editor, '<div style="margin:4px 0">☐ 待办事项</div>');
                     break;
                 case 'code':
-                    insertAtCursor(editor, '<pre><code>' + (selected || '代码') + '</code></pre>');
+                    insertAtCursor(editor, '<pre><code class="language-text">' + (selected || '代码') + '</code></pre>');
                     break;
                 case 'quote':
                     document.execCommand('formatBlock', false, 'blockquote');
