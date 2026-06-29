@@ -18,10 +18,8 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
-    <!-- Tesseract.js OCR -->
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.0/dist/tesseract.min.js"></script>
-    <!-- D3.js for Knowledge Graph -->
-    <script src="https://cdn.jsdelivr.net/npm/d3@7.8.5/dist/d3.min.js"></script>
+    <!-- Tesseract.js OCR (lazy loaded) -->
+    <!-- D3.js for Knowledge Graph (lazy loaded) -->
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #fff; color: #333; height: 100vh; overflow: hidden; }
@@ -191,12 +189,14 @@
         }
         .selection-bar {
             display: none;
-            padding: 10px 16px;
+            padding: 8px 12px;
             border-bottom: 1px solid #dee2e6;
             background: #4a6cf7;
             color: white;
             align-items: center;
             justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 4px;
         }
         .sidebar.selecting .selection-bar {
             display: flex;
@@ -204,20 +204,23 @@
         .selection-bar .sel-count {
             font-size: 13px;
             font-weight: 500;
+            flex-shrink: 0;
         }
         .selection-bar .sel-actions {
             display: flex;
-            gap: 8px;
+            gap: 4px;
+            flex-wrap: wrap;
         }
         .selection-bar button {
-            padding: 5px 12px;
+            padding: 4px 8px;
             border: 1px solid rgba(255,255,255,0.4);
             border-radius: 4px;
             background: transparent;
             color: white;
-            font-size: 12px;
+            font-size: 11px;
             cursor: pointer;
             transition: all 0.2s;
+            white-space: nowrap;
         }
         .selection-bar button:hover {
             background: rgba(255,255,255,0.2);
@@ -960,8 +963,11 @@
             <div id="selectionBar" class="selection-bar">
                 <span class="sel-count" id="selCount">已选 0 篇</span>
                 <div class="sel-actions">
-                    <button onclick="exitSelectionMode()">取消</button>
+                    <button onclick="batchMoveToFolder()">📁 归档</button>
+                    <button onclick="batchToggleStar()">⭐ 收藏</button>
+                    <button onclick="batchTogglePin()">📌 置顶</button>
                     <button class="danger" onclick="batchDelete()">🗑️ 删除</button>
+                    <button onclick="exitSelectionMode()">取消</button>
                 </div>
             </div>
             <div id="noteList" class="note-list">
@@ -1418,6 +1424,34 @@
         let isSelecting = false;
 
         // ============ 初始化 ============
+        function loadScript(src) {
+            return new Promise(function(resolve, reject) {
+                var script = document.createElement('script');
+                script.src = src;
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        }
+
+        async function loadTesseract() {
+            if (typeof Tesseract !== 'undefined') return;
+            try {
+                await loadScript('https://cdn.jsdelivr.net/npm/tesseract.js@5.1.0/dist/tesseract.min.js');
+            } catch (err) {
+                showSyncStatus('error', 'OCR 库加载失败');
+            }
+        }
+
+        async function loadD3() {
+            if (typeof d3 !== 'undefined') return;
+            try {
+                await loadScript('https://cdn.jsdelivr.net/npm/d3@7.8.5/dist/d3.min.js');
+            } catch (err) {
+                showSyncStatus('error', '知识图谱库加载失败');
+            }
+        }
+
         function init() {
             // 检查是否是分享链接
             var params = new URLSearchParams(window.location.search);
@@ -1916,6 +1950,50 @@
             renderNoteList();
         }
 
+        function batchMoveToFolder() {
+            if (selectedNotes.size === 0) return;
+            var folders = ['未归档', '工作', '项目', '客户', '学习', '生活', '其他'];
+            var folder = prompt('选择归档文件夹（输入名称）：', '未归档');
+            if (!folder) return;
+            var notes = getNotes();
+            notes.forEach(function(n) {
+                if (selectedNotes.has(n.id)) { n.folder = folder; n.updatedAt = new Date().toISOString(); }
+            });
+            saveNotes(notes);
+            exitSelectionMode();
+            renderNoteList();
+        }
+
+        function batchToggleStar() {
+            if (selectedNotes.size === 0) return;
+            var notes = getNotes();
+            var allStarred = Array.from(selectedNotes).every(function(id) {
+                var note = notes.find(function(n) { return n.id === id; });
+                return note && note.starred;
+            });
+            notes.forEach(function(n) {
+                if (selectedNotes.has(n.id)) { n.starred = !allStarred; n.updatedAt = new Date().toISOString(); }
+            });
+            saveNotes(notes);
+            exitSelectionMode();
+            renderNoteList();
+        }
+
+        function batchTogglePin() {
+            if (selectedNotes.size === 0) return;
+            var notes = getNotes();
+            var allPinned = Array.from(selectedNotes).every(function(id) {
+                var note = notes.find(function(n) { return n.id === id; });
+                return note && note.pinned;
+            });
+            notes.forEach(function(n) {
+                if (selectedNotes.has(n.id)) { n.pinned = !allPinned; n.updatedAt = new Date().toISOString(); }
+            });
+            saveNotes(notes);
+            exitSelectionMode();
+            renderNoteList();
+        }
+
         // ============ 编辑器渲染 ============
         function renderEditor() {
             var lockBtn = document.getElementById('lockNote');
@@ -2340,7 +2418,7 @@
         function importNote() {
             var input = document.createElement('input');
             input.type = 'file';
-            input.accept = '.md,.markdown,.txt,.json';
+            input.accept = '.md,.markdown,.txt,.json,.html,.htm';
             input.multiple = true;
             input.onchange = function(e) {
                 var files = e.target.files;
@@ -2353,11 +2431,21 @@
                     reader.onload = function() {
                         var text = reader.result;
                         var title = file.name.replace(/\.[^/.]+$/, '');
-                        // 如果文件内容第一行是 # 标题，提取为标题
-                        var firstLine = text.split('\n')[0];
-                        if (firstLine && firstLine.startsWith('# ')) {
-                            title = firstLine.substring(2).trim();
-                            text = text.substring(firstLine.length).trim();
+                        var ext = file.name.split('.').pop().toLowerCase();
+                        // HTML 文件：提取 body 内容
+                        if (ext === 'html' || ext === 'htm') {
+                            var match = text.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+                            if (match) text = match[1];
+                            // 尝试提取标题
+                            var titleMatch = text.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+                            if (titleMatch) title = titleMatch[1].trim();
+                        } else {
+                            // 如果文件内容第一行是 # 标题，提取为标题
+                            var firstLine = text.split('\n')[0];
+                            if (firstLine && firstLine.startsWith('# ')) {
+                                title = firstLine.substring(2).trim();
+                                text = text.substring(firstLine.length).trim();
+                            }
                         }
                         var note = {
                             id: generateId(),
@@ -2576,9 +2664,9 @@
         }
 
         // ============ 知识图谱 ============
-        function openGraphModal() {
+        async function openGraphModal() {
             document.getElementById('graphModal').classList.add('show');
-            renderKnowledgeGraph();
+            await renderKnowledgeGraph();
         }
 
         function closeGraphModal() {
@@ -2588,7 +2676,13 @@
             svg.selectAll('*').remove();
         }
 
-        function renderKnowledgeGraph() {
+        async function renderKnowledgeGraph() {
+            await loadD3();
+            if (typeof d3 === 'undefined') {
+                var svgEl = document.getElementById('graphSvg');
+                svgEl.innerHTML = '<text x="50%" y="50%" text-anchor="middle" fill="#dc3545" font-size="14">知识图谱库加载失败</text>';
+                return;
+            }
             var svg = d3.select('#graphSvg');
             svg.selectAll('*').remove();
 
@@ -3062,7 +3156,8 @@
         }
 
         // ============ OCR 图片文字识别 ============
-        function doOCR(base64) {
+        async function doOCR(base64) {
+            await loadTesseract();
             if (typeof Tesseract === 'undefined') {
                 return;
             }
