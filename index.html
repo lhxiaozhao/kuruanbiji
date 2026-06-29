@@ -168,6 +168,10 @@
 
         /* 编辑器 */
         .editor { flex: 1; display: flex; flex-direction: column; min-width: 0; transition: margin-left 0.3s; }
+        .mobile-menu-btn { display: none; width: 36px; height: 36px; border: none; border-radius: 8px; background: #f8f9fa; font-size: 18px; cursor: pointer; flex-shrink: 0; align-items: center; justify-content: center; }
+        .mobile-menu-btn:hover { background: #e9ecef; }
+        [data-theme="dark"] .mobile-menu-btn { background: #16213e; color: #adb5bd; }
+        [data-theme="dark"] .mobile-menu-btn:hover { background: #2d3748; }
         .editor.expanded { margin-left: 0; }
         .editor-header { padding: 12px 24px; border-bottom: 1px solid #dee2e6; display: flex; justify-content: space-between; align-items: center; }
         #noteTitle { flex: 1; padding: 8px 12px; border: 1px solid #dee2e6; border-radius: 6px; font-size: 16px; font-weight: 500; outline: none; min-width: 0; }
@@ -693,9 +697,123 @@
 
         /* 响应式 */
         @media (max-width: 768px) {
+            /* 侧边栏 */
             .sidebar { width: 100%; position: absolute; z-index: 10; transform: translateX(-100%); transition: transform 0.3s; }
             .sidebar.open { transform: translateX(0); }
-            .editor-body.split { display: grid; grid-template-columns: 1fr; }
+            .sidebar.collapsed { width: 100%; }
+            .sidebar-toggle { display: none; }
+
+            /* 编辑器 */
+            .editor { margin-left: 0 !important; }
+            .editor.expanded { margin-left: 0; }
+            .editor-header { padding: 10px 12px; flex-wrap: wrap; gap: 6px; }
+            .editor-header > div:first-child { width: 100%; }
+            #noteTitle { font-size: 16px; padding: 8px 10px; }
+            .category-select { font-size: 12px; padding: 4px 6px; }
+            .editor-header .category-select { display: inline-block; width: auto; margin-right: 4px; }
+            .editor-actions { display: flex; gap: 4px; flex-wrap: wrap; }
+            .editor-actions button { width: 32px; height: 32px; font-size: 14px; padding: 0; }
+
+            /* 工具栏 - 折叠为底部菜单 */
+            .editor-toolbar {
+                display: flex;
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                padding: 6px 8px;
+                gap: 2px;
+                border-top: 1px solid #dee2e6;
+                border-bottom: 1px solid #dee2e6;
+                background: #f8f9fa;
+                -webkit-overflow-scrolling: touch;
+            }
+            [data-theme="dark"] .editor-toolbar { background: #16213e; border-color: #2d3748; }
+            .editor-toolbar .toolbar-btn { flex-shrink: 0; width: 36px; height: 32px; font-size: 14px; padding: 0; }
+            .editor-toolbar .toolbar-divider { display: none; }
+
+            /* 编辑区 */
+            #noteContent { padding: 16px; font-size: 15px; line-height: 1.6; }
+            #noteContent img { max-width: 100%; }
+
+            /* 预览区 */
+            #preview { padding: 16px; font-size: 15px; line-height: 1.6; }
+            #preview h1 { font-size: 20px; }
+            #preview h2 { font-size: 18px; }
+            #preview h3 { font-size: 16px; }
+            #preview pre { font-size: 12px; padding: 10px; }
+            #preview pre .code-header { padding: 6px 10px; }
+            #preview pre code { padding: 10px; font-size: 12px; }
+            #preview table { font-size: 12px; }
+            #preview th, #preview td { padding: 6px 8px; }
+
+            /* 分屏模式 - 上下排列 */
+            .editor-body.split { display: flex; flex-direction: column; }
+            .editor-body.split #noteContent { flex: 1; min-height: 50vh; border-right: none; border-bottom: 1px solid #dee2e6; }
+            .editor-body.split #preview { flex: 1; min-height: 50vh; }
+            [data-theme="dark"] .editor-body.split #noteContent { border-color: #2d3748; }
+
+            /* 查找栏 */
+            .find-bar { flex-wrap: wrap; gap: 4px; padding: 6px 8px; }
+            .find-bar .find-input, .find-bar .replace-input { font-size: 13px; padding: 6px 8px; }
+            .find-bar button { padding: 4px 8px; font-size: 12px; }
+
+            /* 底部栏 */
+            .editor-footer { padding: 6px 12px; font-size: 12px; }
+
+            /* 笔记列表 */
+            .note-item { padding: 10px; }
+            .note-title { font-size: 13px; }
+            .note-preview { font-size: 11px; }
+            .note-date { font-size: 10px; }
+
+            /* 侧边栏 */
+            .sidebar-header { padding: 12px; }
+            .sidebar-header h1 { font-size: 14px; }
+            .search-box { padding: 8px 12px; }
+            .sidebar-toolbar { padding: 6px 12px; }
+            .filter-tabs { gap: 2px; }
+            .tab { padding: 3px 5px; font-size: 10px; }
+            .sort-select { font-size: 9px; padding: 2px 1px; max-width: 50px; }
+
+            /* 弹窗适配 */
+            .export-modal-content { width: 90%; min-width: 280px; }
+            .login-card { width: 90%; max-width: 340px; padding: 24px 20px 16px; }
+            .login-card-header .login-icon { width: 40px; height: 40px; font-size: 18px; }
+            .login-card-header h3 { font-size: 16px; }
+            .login-input { padding: 10px 12px; font-size: 14px; }
+            .login-btn-primary { padding: 11px; font-size: 14px; }
+            .login-btn-secondary { padding: 10px; font-size: 14px; }
+
+            /* 知识图谱 */
+            .graph-modal-content { width: 95%; height: 90%; }
+
+            /* 评论弹窗 */
+            .comment-popup { min-width: 200px; max-width: 80vw; }
+
+            /* 空状态 */
+            .empty-state { padding: 40px 20px; }
+            .empty-icon { font-size: 48px; }
+            .empty-text { font-size: 14px; }
+            .empty-hint { font-size: 12px; }
+
+            /* 标签云 */
+            .tag-cloud { font-size: 10px; padding: 6px 12px; }
+
+            /* 触摸目标最小 44px */
+            button, .toolbar-btn, .tab, .note-item, a {
+                min-height: 44px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .toolbar-btn { min-height: 32px; } /* 工具栏按钮保持紧凑 */
+
+            /* 隐藏桌面端专属元素 */
+            .sidebar-toggle { display: none; }
+
+            /* 滚动条优化 */
+            ::-webkit-scrollbar { width: 4px; height: 4px; }
+            ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 2px; }
+            [data-theme="dark"] ::-webkit-scrollbar-thumb { background: #4a5568; }
         }
     </style>
 </head>
@@ -773,6 +891,7 @@
         <main class="editor">
             <div class="editor-header">
                 <div style="display:flex;flex:1;align-items:center;gap:8px;min-width:0">
+                    <button id="mobileMenuBtn" class="mobile-menu-btn" onclick="toggleMobileSidebar()" title="菜单">☰</button>
                     <input type="text" id="noteTitle" placeholder="笔记标题">
                     <select id="noteFolder" class="category-select" onchange="setNoteFolder(this.value)">
                         <option value="">未归档</option>
@@ -1384,6 +1503,32 @@
             btn.title = sidebar.classList.contains('collapsed') ? '展开侧边栏' : '折叠侧边栏';
             btn.style.left = sidebar.classList.contains('collapsed') ? '8px' : '288px';
         }
+
+        function toggleMobileSidebar() {
+            var sidebar = document.querySelector('.sidebar');
+            sidebar.classList.toggle('open');
+        }
+
+        // 点击侧边栏外关闭（移动端）
+        document.addEventListener('click', function(e) {
+            var sidebar = document.querySelector('.sidebar');
+            var menuBtn = document.getElementById('mobileMenuBtn');
+            if (sidebar && sidebar.classList.contains('open') && window.innerWidth <= 768) {
+                if (!sidebar.contains(e.target) && menuBtn && !menuBtn.contains(e.target)) {
+                    sidebar.classList.remove('open');
+                }
+            }
+        });
+
+        // 选择笔记后关闭侧边栏（移动端）
+        var origLoadNote = loadNote;
+        loadNote = function(id) {
+            origLoadNote(id);
+            if (window.innerWidth <= 768) {
+                var sidebar = document.querySelector('.sidebar');
+                if (sidebar) sidebar.classList.remove('open');
+            }
+        };
 
         // ============ 筛选 ============
         function switchFilter(filter, el) {
