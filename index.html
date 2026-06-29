@@ -190,6 +190,9 @@
         .editor-body.split #noteContent { border-right: 1px solid #dee2e6; }
         [data-theme="dark"] .editor-body.split #noteContent { border-color: #2d3748; }
         #noteContent { width: 100%; height: 100%; padding: 24px; border: none; background: #fff; font-size: 15px; line-height: 1.7; outline: none; font-family: 'SF Mono', 'Monaco', monospace; overflow-y: auto; }
+        #preview { overflow-y: auto; }
+        .editor-body.split #noteContent,
+        .editor-body.split #preview { overflow-y: auto; }
         #noteContent img { max-width: 100%; height: auto; display: block; margin: 8px 0; border-radius: 4px; resize: both; overflow: hidden; cursor: default; }
         #noteContent p { margin: 8px 0; }
         #noteContent h1, #noteContent h2, #noteContent h3 { margin: 12px 0 8px; }
@@ -1208,6 +1211,37 @@
             createWelcomeNote();
             // Set initial sidebar toggle button position
             document.getElementById('toggleSidebar').style.left = '288px';
+            // 首次使用引导
+            showFirstRunTips();
+        }
+
+        function showFirstRunTips() {
+            if (localStorage.getItem('notes_app_first_run') === 'done') return;
+            localStorage.setItem('notes_app_first_run', 'done');
+            var tips = [
+                '👋 欢迎使用酷软笔记！',
+                '📝 Ctrl+B 加粗 / Ctrl+I 斜体 / Ctrl+K 链接',
+                '👁️ Ctrl+E 切换分屏预览',
+                '💾 Ctrl+S 保存，自动保存已开启',
+                '🔍 Ctrl+F 查找替换',
+                '📱 浏览器菜单可安装为桌面应用'
+            ];
+            var idx = 0;
+            var el = document.createElement('div');
+            el.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a2e;color:#fff;padding:12px 20px;border-radius:12px;font-size:14px;z-index:3000;box-shadow:0 8px 24px rgba(0,0,0,0.2);max-width:90vw;text-align:center;cursor:pointer;transition:opacity 0.3s';
+            el.textContent = tips[0];
+            document.body.appendChild(el);
+            var iv = setInterval(function() {
+                idx++;
+                if (idx >= tips.length) {
+                    clearInterval(iv);
+                    setTimeout(function() { el.style.opacity = '0'; setTimeout(function() { el.remove(); }, 300); }, 2000);
+                } else {
+                    el.style.opacity = '0';
+                    setTimeout(function() { el.textContent = tips[idx]; el.style.opacity = '1'; }, 300);
+                }
+            }, 2500);
+            el.addEventListener('click', function() { clearInterval(iv); el.remove(); });
         }
 
         // ============ 事件绑定 ============
@@ -1250,7 +1284,7 @@
                 }
             });
 
-            // Markdown 快捷键
+            // Markdown 快捷键 + 语法自动补全
             document.getElementById('noteContent').addEventListener('keydown', function(e) {
                 if (e.ctrlKey || e.metaKey) {
                     var cmd = null;
@@ -1262,6 +1296,46 @@
                         insertMarkdown(cmd);
                     }
                 }
+                // 自动补全：回车时补全列表项和任务列表
+                if (e.key === 'Enter') {
+                    var sel = window.getSelection();
+                    if (!sel.rangeCount) return;
+                    var range = sel.getRangeAt(0);
+                    var node = range.startContainer;
+                    // 向上找到当前行
+                    var lineNode = node.nodeType === 3 ? node.parentElement : node;
+                    while (lineNode && lineNode.parentElement && lineNode.parentElement.id !== 'noteContent') {
+                        if (lineNode.tagName === 'DIV' || lineNode.tagName === 'P' || lineNode.tagName === 'LI') break;
+                        lineNode = lineNode.parentElement;
+                    }
+                    if (lineNode && lineNode.textContent) {
+                        var text = lineNode.textContent.trim();
+                        // 列表项补全
+                        if (/^- /.test(text) && text.length > 2) {
+                            e.preventDefault();
+                            var newDiv = document.createElement('div');
+                            newDiv.textContent = '- ';
+                            lineNode.parentNode.insertBefore(newDiv, lineNode.nextSibling);
+                            var newRange = document.createRange();
+                            newRange.setStart(newDiv, 2);
+                            newRange.collapse(true);
+                            sel.removeAllRanges();
+                            sel.addRange(newRange);
+                        }
+                        // 任务列表补全
+                        else if (/^- \[[ xX]\] /.test(text)) {
+                            e.preventDefault();
+                            var newDiv = document.createElement('div');
+                            newDiv.textContent = '- [ ] ';
+                            lineNode.parentNode.insertBefore(newDiv, lineNode.nextSibling);
+                            var newRange = document.createRange();
+                            newRange.setStart(newDiv, 7);
+                            newRange.collapse(true);
+                            sel.removeAllRanges();
+                            sel.addRange(newRange);
+                        }
+                    }
+                }
             });
 
             // 全局快捷键
@@ -1271,6 +1345,7 @@
                     else if (e.key === 'n') { e.preventDefault(); createNewNote(); }
                     else if (e.key === 'p') { e.preventDefault(); printNote(); }
                     else if (e.key === 'f') { e.preventDefault(); toggleFindBar(); }
+                    else if (e.key === 'e') { e.preventDefault(); togglePreview(); }
                 }
                 // ESC 关闭查找栏
                 if (e.key === 'Escape') {
@@ -2940,6 +3015,24 @@
                 }
             }
         }
+
+        // 同步滚动（编辑区 → 预览区）
+        var scrollSyncTimer = null;
+        function syncScrollToPreview() {
+            if (viewMode !== 'split') return;
+            var editor = document.getElementById('noteContent');
+            var preview = document.getElementById('preview');
+            if (!editor || !preview) return;
+            var ratio = editor.scrollTop / (editor.scrollHeight - editor.clientHeight);
+            if (isNaN(ratio) || ratio < 0) ratio = 0;
+            preview.scrollTop = ratio * (preview.scrollHeight - preview.clientHeight);
+        }
+
+        // 绑定同步滚动事件
+        document.getElementById('noteContent').addEventListener('scroll', function() {
+            if (scrollSyncTimer) clearTimeout(scrollSyncTimer);
+            scrollSyncTimer = setTimeout(syncScrollToPreview, 50);
+        });
 
         function parseMarkdown(md, notes) {
             if (!md) return '';
