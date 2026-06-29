@@ -2459,8 +2459,8 @@
         async function printNote() {
             if (!currentNote) return;
             var preview = document.getElementById('preview');
-            var content = document.getElementById('noteContent');
-            preview.innerHTML = '<h1>' + escapeHtml(currentNote.title) + '</h1>' + renderCommentsInPreview(content.innerHTML);
+            var editor = document.getElementById('noteContent');
+            preview.innerHTML = '<h1>' + escapeHtml(currentNote.title) + '</h1>' + renderCommentsInPreview(parseMarkdown(currentNote.content, getNotes()));
             preview.classList.remove('hidden');
             content.classList.add('hidden');
             // 应用增强渲染
@@ -2836,7 +2836,35 @@
                     // 用浏览器打印生成 PDF
                     var printWindow = window.open('', '_blank');
                     var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + title + '</title>' +
-                        '<style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;max-width:800px;margin:40px auto;padding:0 20px;line-height:1.8;color:#333}h1{border-bottom:2px solid #4a6cf7;padding-bottom:10px}h2{border-bottom:1px solid #dee2e6;padding-bottom:8px}pre{background:#f8f9fa;padding:12px;border-radius:6px;overflow-x:auto}code{background:#f8f9fa;padding:2px 6px;border-radius:3px}blockquote{border-left:4px solid #4a6cf7;padding:8px 16px;color:#6c757d;margin:16px 0}table{border-collapse:collapse;width:100%;margin:16px 0}th,td{border:1px solid #dee2e6;padding:8px 12px;text-align:left}th{background:#f8f9fa}img{max-width:100%;height:auto}ul,ol{padding-left:24px}hr{border:none;border-top:1px solid #dee2e6;margin:20px 0}</style>' +
+                        '<style>' +
+                        '@page { size: A4; margin: 2cm; }' +
+                        'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif; max-width: 720px; margin: 0 auto; padding: 0; line-height: 1.8; color: #2c3e50; font-size: 14px; }' +
+                        'h1 { font-size: 24px; font-weight: 700; color: #1a1a2e; border-bottom: 3px solid #4a6cf7; padding-bottom: 12px; margin: 0 0 24px; }' +
+                        'h2 { font-size: 20px; font-weight: 600; color: #2c3e50; border-left: 4px solid #4a6cf7; padding-left: 12px; margin: 24px 0 16px; }' +
+                        'h3 { font-size: 17px; font-weight: 600; color: #34495e; margin: 20px 0 12px; }' +
+                        'h4 { font-size: 15px; font-weight: 600; color: #4a5568; margin: 16px 0 10px; }' +
+                        'p { margin: 12px 0; }' +
+                        'pre { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; padding: 16px; margin: 16px 0; overflow-x: auto; font-size: 13px; line-height: 1.6; }' +
+                        'pre code { background: transparent; padding: 0; font-family: "SF Mono", Monaco, Consolas, monospace; }' +
+                        'code { background: #f0f2f5; padding: 2px 6px; border-radius: 3px; font-size: 13px; color: #e83e8c; font-family: "SF Mono", Monaco, Consolas, monospace; }' +
+                        'blockquote { border-left: 4px solid #4a6cf7; padding: 8px 16px; margin: 16px 0; background: #f8f9ff; color: #5a6c7d; }' +
+                        'table { border-collapse: collapse; width: 100%; margin: 16px 0; font-size: 13px; }' +
+                        'th, td { border: 1px solid #dee2e6; padding: 8px 12px; text-align: left; }' +
+                        'th { background: #f8f9fa; font-weight: 600; }' +
+                        'tr:nth-child(even) { background: #fafbfc; }' +
+                        'img { max-width: 100%; height: auto; display: block; margin: 16px auto; border-radius: 4px; }' +
+                        'ul, ol { padding-left: 24px; margin: 12px 0; }' +
+                        'li { margin: 6px 0; }' +
+                        'hr { border: none; border-top: 1px solid #dee2e6; margin: 24px 0; }' +
+                        'a { color: #4a6cf7; text-decoration: none; }' +
+                        'a:hover { text-decoration: underline; }' +
+                        '.task-list { list-style: none; padding-left: 0; }' +
+                        '.task-list li { position: relative; padding-left: 24px; margin: 6px 0; }' +
+                        '.task-list li:before { content: "\2610"; position: absolute; left: 0; color: #999; }' +
+                        '.task-list li.checked:before { content: "\2611"; color: #52c41a; }' +
+                        '.mermaid { text-align: center; margin: 16px 0; }' +
+                        '.formula { font-size: 16px; }' +
+                        '</style>' +
                         '</head><body><h1>' + escapeHtml(title) + '</h1>' + currentNote.content + '</body></html>';
                     printWindow.document.write(html);
                     printWindow.document.close();
@@ -2918,33 +2946,47 @@
 
         function generateWeChatArticle(title, content) {
             var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + escapeHtml(title) + '</title>' +
+                '<meta name="viewport" content="width=device-width, initial-scale=1.0">' +
                 '<style>' +
-                'body{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;max-width:680px;margin:0 auto;padding:20px;line-height:1.8;color:#333;font-size:16px}' +
-                'h1{font-size:22px;font-weight:600;margin:24px 0 16px;text-align:center;color:#333}' +
-                'h2{font-size:18px;font-weight:600;margin:20px 0 12px;color:#333;border-left:4px solid #f77f00;padding-left:12px}' +
-                'h3{font-size:16px;font-weight:600;margin:16px 0 8px;color:#333}' +
-                'p{margin:12px 0}' +
-                'strong{font-weight:600;color:#333}' +
-                'em{font-style:italic;color:#666}' +
-                'blockquote{border-left:4px solid #f77f00;padding:8px 16px;margin:16px 0;background:#fff8f0;color:#666}' +
-                'code{background:#f5f5f5;padding:2px 6px;border-radius:3px;font-size:14px;color:#e83e8c}' +
-                'pre{background:#2d3748;color:#e9ecef;padding:16px;border-radius:6px;overflow-x:auto;font-size:14px;line-height:1.6}' +
-                'pre code{background:transparent;color:inherit;padding:0}' +
-                'table{border-collapse:collapse;width:100%;margin:16px 0;font-size:14px}' +
-                'th,td{border:1px solid #e5e5e5;padding:8px 12px;text-align:left}' +
-                'th{background:#f7f7f7;font-weight:600}' +
-                'img{max-width:100%;height:auto;display:block;margin:16px auto}' +
-                'ul,ol{padding-left:24px;margin:12px 0}' +
-                'li{margin:6px 0}' +
-                'hr{border:none;border-top:1px solid #e5e5e5;margin:20px 0}' +
-                'a{color:#576b95;text-decoration:none}' +
-                '.task-list{list-style:none;padding-left:0}' +
-                '.task-list li{position:relative;padding-left:24px}' +
-                '.task-list li:before{content:"±0";position:absolute;left:0;color:#999}' +
-                '.task-list li.checked:before{content:"±1";color:#52c41a}' +
+                'body { font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; max-width: 680px; margin: 0 auto; padding: 24px 20px; line-height: 1.8; color: #333; font-size: 16px; background: #fff; }' +
+                '.article-header { text-align: center; padding: 20px 0 24px; border-bottom: 1px solid #f0f0f0; margin-bottom: 24px; }' +
+                '.article-header h1 { font-size: 24px; font-weight: 700; color: #1a1a2e; margin: 0 0 8px; }' +
+                '.article-header .meta { font-size: 13px; color: #999; }' +
+                'h1 { font-size: 22px; font-weight: 700; margin: 28px 0 16px; color: #1a1a2e; text-align: center; }' +
+                'h2 { font-size: 18px; font-weight: 600; margin: 24px 0 12px; color: #1a1a2e; border-left: 4px solid #4a6cf7; padding-left: 12px; }' +
+                'h3 { font-size: 16px; font-weight: 600; margin: 20px 0 10px; color: #2c3e50; }' +
+                'h4 { font-size: 15px; font-weight: 600; margin: 16px 0 8px; color: #4a5568; }' +
+                'p { margin: 12px 0; }' +
+                'strong { font-weight: 600; color: #1a1a2e; }' +
+                'em { font-style: italic; color: #666; }' +
+                'blockquote { border-left: 4px solid #4a6cf7; padding: 10px 16px; margin: 16px 0; background: #f8f9ff; color: #5a6c7d; border-radius: 0 4px 4px 0; }' +
+                'code { background: #f5f5f5; padding: 2px 6px; border-radius: 3px; font-size: 14px; color: #e83e8c; font-family: "SF Mono", Monaco, Consolas, monospace; }' +
+                'pre { background: #1e1e2e; color: #cdd6f4; padding: 16px; border-radius: 8px; overflow-x: auto; font-size: 14px; line-height: 1.6; margin: 16px 0; }' +
+                'pre code { background: transparent; color: inherit; padding: 0; font-family: "SF Mono", Monaco, Consolas, monospace; }' +
+                'table { border-collapse: collapse; width: 100%; margin: 16px 0; font-size: 14px; }' +
+                'th, td { border: 1px solid #e5e5e5; padding: 8px 12px; text-align: left; }' +
+                'th { background: #f7f7f7; font-weight: 600; }' +
+                'tr:nth-child(even) { background: #fafafa; }' +
+                'img { max-width: 100%; height: auto; display: block; margin: 16px auto; border-radius: 4px; }' +
+                'ul, ol { padding-left: 24px; margin: 12px 0; }' +
+                'li { margin: 6px 0; }' +
+                'hr { border: none; border-top: 1px solid #e5e5e5; margin: 24px 0; }' +
+                'a { color: #4a6cf7; text-decoration: none; }' +
+                'a:hover { text-decoration: underline; }' +
+                '.task-list { list-style: none; padding-left: 0; }' +
+                '.task-list li { position: relative; padding-left: 28px; margin: 8px 0; }' +
+                '.task-list li:before { content: "\2610"; position: absolute; left: 0; color: #999; font-size: 18px; }' +
+                '.task-list li.checked:before { content: "\2611"; color: #52c41a; }' +
+                '.mermaid { text-align: center; margin: 16px 0; }' +
+                '.formula { font-size: 16px; }' +
+                '.article-footer { margin-top: 32px; padding-top: 16px; border-top: 1px solid #f0f0f0; text-align: center; font-size: 13px; color: #999; }' +
                 '</style></head><body>' +
+                '<div class="article-header">' +
                 '<h1>' + escapeHtml(title) + '</h1>' +
+                '<div class="meta">酷软笔记 · 导出</div>' +
+                '</div>' +
                 '<div>' + (content || '') + '</div>' +
+                '<div class="article-footer">— 完 —</div>' +
                 '</body></html>';
             return html;
         }
