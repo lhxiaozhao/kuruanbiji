@@ -2054,21 +2054,35 @@
             if (!currentNote) return;
             var versions = currentNote.versions || [];
             if (versions.length === 0) {
-                alert('暂无版本历史');
+                var modal = document.createElement('div');
+                modal.className = 'export-modal show';
+                modal.innerHTML = '<div class="export-modal-content"><h3>📜 版本历史</h3>' +
+                    '<div style="text-align:center;padding:30px;color:#888">' +
+                    '<div style="font-size:48px;margin-bottom:12px">📝</div>' +
+                    '<div>暂无版本历史</div>' +
+                    '<div style="font-size:12px;margin-top:8px">编辑笔记后会自动保存版本</div>' +
+                    '</div>' +
+                    '<button class="export-cancel" onclick="this.closest('.export-modal').remove()">关闭</button></div>';
+                document.body.appendChild(modal);
                 return;
             }
             var modal = document.createElement('div');
             modal.className = 'export-modal show';
-            modal.innerHTML = '<div class="export-modal-content"><h3>📜 版本历史 (' + versions.length + ' 个版本)</h3>' +
+            modal.innerHTML = '<div class="export-modal-content" style="max-width:600px"><h3>📜 版本历史 (' + versions.length + ' 个版本)</h3>' +
+                '<div style="max-height:400px;overflow-y:auto">' +
                 versions.slice().reverse().map(function(v) {
                     var time = new Date(v.timestamp).toLocaleString('zh-CN');
-                    var preview = v.content.substring(0, 50).replace(/\n/g, ' ');
-                    return '<div style="padding:12px;border:1px solid #dee2e6;border-radius:8px;margin-bottom:8px;cursor:pointer" onclick="restoreVersion(\'' + v.id + '\')">' +
-                        '<div style="font-weight:500">' + escapeHtml(v.title || '无标题') + '</div>' +
-                        '<div style="font-size:12px;color:#6c757d;margin-top:4px">' + time + '</div>' +
-                        '<div style="font-size:12px;color:#adb5bd;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + escapeHtml(preview) + '</div>' +
+                    var preview = (v.content || '').replace(/<[^>]+>/g, '').substring(0, 60).replace(/\n/g, ' ');
+                    return '<div style="padding:12px 14px;border:1px solid #dee2e6;border-radius:8px;margin-bottom:8px;cursor:pointer;transition:all 0.2s" onclick="restoreVersion(\'' + v.id + '\')" onmouseover="this.style.borderColor=\'#4a6cf7\';this.style.background=\'#f8f9ff\'" onmouseout="this.style.borderColor=\'#dee2e6\';this.style.background=\'#fff\'">' +
+                        '<div style="display:flex;justify-content:space-between;align-items:center">' +
+                        '<div style="font-weight:500;font-size:14px">' + escapeHtml(v.title || '无标题') + '</div>' +
+                        '<div style="font-size:11px;color:#888">' + time + '</div>' +
+                        '</div>' +
+                        '<div style="font-size:12px;color:#adb5bd;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + escapeHtml(preview) + '</div>' +
                         '</div>';
                 }).join('') +
+                '</div>' +
+                '<div style="margin-top:12px;padding-top:12px;border-top:1px solid #dee2e6;font-size:12px;color:#888">💡 点击版本可恢复到该版本</div>' +
                 '<button class="export-cancel" onclick="this.closest(\'.export-modal\').remove()">关闭</button></div>';
             document.body.appendChild(modal);
         }
@@ -2621,6 +2635,17 @@
             });
 
             var svgEl = document.getElementById('graphSvg');
+            // 缩放和平移
+            var zoom = d3.zoom()
+                .scaleExtent([0.3, 3])
+                .on("zoom", function(event) {
+                    svg.select(".graph-group").attr("transform", event.transform);
+                });
+            svg.call(zoom);
+            
+            // 创建容器组
+            var graphGroup = svg.append("g").attr("class", "graph-group");
+            
             var width = svgEl.clientWidth;
             var height = svgEl.clientHeight;
 
@@ -2630,10 +2655,10 @@
 
             // 力导向模拟
             var simulation = d3.forceSimulation(nodes)
-                .force('link', d3.forceLink(links).id(function(d) { return d.id; }).distance(100))
+                .distance(120)
                 .force('charge', d3.forceManyBody().strength(-300))
                 .force('center', d3.forceCenter(width / 2, height / 2))
-                .force('collide', d3.forceCollide().radius(40));
+                .radius(50)
 
             // 绘制边
             var link = svg.append('g')
@@ -2681,6 +2706,7 @@
             var tooltip = document.getElementById('graphTooltip');
             node.on('mouseover', function(event, d) {
                 tooltip.textContent = d.name;
+                d3.select(this).attr("r", 26);
                 tooltip.style.opacity = 1;
             });
             node.on('mousemove', function(event) {
@@ -2690,6 +2716,7 @@
             });
             node.on('mouseout', function() {
                 tooltip.style.opacity = 0;
+                d3.select(this).attr("r", 22);
             });
 
             // 拖拽函数
