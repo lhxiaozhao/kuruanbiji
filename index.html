@@ -1142,6 +1142,7 @@
 
     <script>
         // ============ Supabase 配置 ============
+        // TODO: 生产环境请通过环境变量或后端代理注入，避免源码泄露
         const SUPABASE_URL = 'https://hluiebxqsjwlndfdeijo.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_tulX57JCGX9yzsEbIl1CHw_U2amjC63';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -1928,6 +1929,9 @@
 
         // ============ 笔记操作 ============
         function generateId() {
+            if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+                return crypto.randomUUID();
+            }
             return Date.now().toString(36) + Math.random().toString(36).substr(2);
         }
 
@@ -2281,7 +2285,8 @@
                 versions.slice().reverse().map(function(v) {
                     var time = new Date(v.timestamp).toLocaleString('zh-CN');
                     var preview = (v.content || '').replace(/<[^>]+>/g, '').substring(0, 60).replace(/\n/g, ' ');
-                    return '<div style="padding:12px 14px;border:1px solid #dee2e6;border-radius:8px;margin-bottom:8px;cursor:pointer;transition:all 0.2s" onclick="restoreVersion(\'' + v.id + '\')" onmouseover="this.style.borderColor=\'#4a6cf7\';this.style.background=\'#f8f9ff\'" onmouseout="this.style.borderColor=\'#dee2e6\';this.style.background=\'#fff\'">' +
+                    var safeId = v.id.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                    return '<div style="padding:12px 14px;border:1px solid #dee2e6;border-radius:8px;margin-bottom:8px;cursor:pointer;transition:all 0.2s" onclick="restoreVersion(\'' + safeId + '\')" onmouseover="this.style.borderColor=\'#4a6cf7\';this.style.background=\'#f8f9ff\'" onmouseout="this.style.borderColor=\'#dee2e6\';this.style.background=\'#fff\'">' +
                         '<div style="display:flex;justify-content:space-between;align-items:center">' +
                         '<div style="font-weight:500;font-size:14px">' + escapeHtml(v.title || '无标题') + '</div>' +
                         '<div style="font-size:11px;color:#888">' + time + '</div>' +
@@ -2784,7 +2789,8 @@
             var replace = document.getElementById('replaceInput').value;
             if (!query) return;
             var editor = document.getElementById('noteContent');
-            editor.innerHTML = editor.innerHTML.split(query).join(replace);
+            var escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            editor.innerHTML = editor.innerHTML.split(escapedQuery).join(replace);
             autoSave();
             doFind();
         }
@@ -3149,11 +3155,16 @@
             var shareUrl = window.location.origin + window.location.pathname + '?share=' + currentNote.id;
             var modal = document.createElement('div');
             modal.className = 'export-modal show';
-            modal.innerHTML = '<div class="export-modal-content"><h3>🔗 分享笔记</h3>' +
+            var content = document.createElement('div');
+            content.className = 'export-modal-content';
+            content.innerHTML = '<h3>🔗 分享笔记</h3>' +
                 '<p style="font-size:13px;color:#6c757d;margin-bottom:16px">复制链接分享给他人，对方可查看笔记内容（只读）</p>' +
-                '<input type="text" id="shareUrl" value="' + shareUrl + '" style="width:100%;padding:10px;border:1px solid #dee2e6;border-radius:6px;font-size:13px;outline:none" readonly>' +
+                '<input type="text" id="shareUrl" style="width:100%;padding:10px;border:1px solid #dee2e6;border-radius:6px;font-size:13px;outline:none" readonly>' +
                 '<button onclick="copyShareUrl()" style="margin-top:12px;background:#4a6cf7;color:white">📋 复制链接</button>' +
-                '<button class="export-cancel" onclick="this.closest(\'.export-modal\').remove()">关闭</button></div>';
+                '<button class="export-cancel" onclick="this.closest(\'.export-modal\').remove()">关闭</button>';
+            var input = content.querySelector('#shareUrl');
+            input.value = shareUrl;
+            modal.appendChild(content);
             document.body.appendChild(modal);
         }
 
@@ -3161,6 +3172,17 @@
             var input = document.getElementById('shareUrl');
             input.select();
             try {
+                document.execCommand('copy');
+                alert('链接已复制到剪贴板');
+            } catch (e) {
+                navigator.clipboard.writeText(input.value).then(function() {
+                    alert('链接已复制到剪贴板');
+                });
+            }
+        }
+
+        // ============ 查看分享笔记 ============
+        function loadSharedNote(noteId) {            try {
                 document.execCommand('copy');
                 alert('链接已复制到剪贴板');
             } catch (e) {
@@ -3183,8 +3205,13 @@
             document.getElementById('noteTitle').disabled = true;
             if (editor) editor.commands.setContent(note.content);
             document.getElementById('noteContent').contentEditable = 'false';
-            document.getElementById('preview').innerHTML = '<h1>' + escapeHtml(note.title) + '</h1>' + note.content;
+            // 分享模式也走 Markdown 解析，保持渲染一致
+            document.getElementById('preview').innerHTML = '<h1>' + escapeHtml(note.title) + '</h1>' + parseMarkdown(note.content, getNotes());
             document.getElementById('preview').classList.remove('hidden');
+            // 应用增强渲染
+            applySyntaxHighlighting();
+            applyMermaid();
+            applyKaTeX();
             // 隐藏编辑工具栏
             document.querySelector('.editor-toolbar').style.display = 'none';
             document.querySelector('.editor-header').style.display = 'none';
