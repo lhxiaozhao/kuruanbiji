@@ -2789,7 +2789,7 @@
             var replace = document.getElementById('replaceInput').value;
             if (!query) return;
             var editor = document.getElementById('noteContent');
-            var escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            var escapedQuery = query.replace(/[\[\]{}()*+?.^$|\\]/g, '\\$&');
             editor.innerHTML = editor.innerHTML.split(escapedQuery).join(replace);
             autoSave();
             doFind();
