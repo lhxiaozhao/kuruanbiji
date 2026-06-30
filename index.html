@@ -3181,18 +3181,6 @@
             }
         }
 
-        // ============ 查看分享笔记 ============
-        function loadSharedNote(noteId) {            try {
-                document.execCommand('copy');
-                alert('链接已复制到剪贴板');
-            } catch (e) {
-                navigator.clipboard.writeText(input.value).then(function() {
-                    alert('链接已复制到剪贴板');
-                });
-            }
-        }
-
-        // ============ 查看分享笔记 ============
         function loadSharedNote(noteId) {
             var notes = getNotes();
             var note = notes.find(function(n) { return n.id === noteId && !n.deleted; });
