@@ -1484,26 +1484,26 @@
         var editor = null;
 
         function initTipTap() {
-            if (!window.tiptap || !window.tiptapStarterKit) {
+            if (!window["@tiptap/core"] || !window["@tiptap/starter-kit"]) {
                 console.error('TipTap not loaded');
                 return;
             }
-            var { Editor } = window.tiptap;
-            var { StarterKit } = window.tiptapStarterKit;
-            var { Image } = window.tiptapImage;
-            var { Placeholder } = window.tiptapPlaceholder;
-            var { Underline } = window.tiptapUnderline;
-            var { Highlight } = window.tiptapHighlight;
-            var { TaskList } = window.tiptapTaskList;
-            var { TaskItem } = window.tiptapTaskItem;
-            var { CodeBlockLowlight } = window.tiptapCodeBlockLowlight;
-            var { Link } = window.tiptapLink;
-            var { Table } = window.tiptapTable;
-            var { TableRow } = window.tiptapTableRow;
-            var { TableCell } = window.tiptapTableCell;
-            var { TableHeader } = window.tiptapTableHeader;
-            var { BubbleMenu } = window.tiptapBubbleMenu;
-            var { CharacterCount } = window.tiptapCharacterCount;
+            var { Editor } = window["@tiptap/core"];
+            var { StarterKit } = window["@tiptap/starter-kit"];
+            var { Image } = window["@tiptap/extension-image"];
+            var { Placeholder } = window["@tiptap/extension-placeholder"];
+            var { Underline } = window["@tiptap/extension-underline"];
+            var { Highlight } = window["@tiptap/extension-highlight"];
+            var { TaskList } = window["@tiptap/extension-task-list"];
+            var { TaskItem } = window["@tiptap/extension-task-item"];
+            var { CodeBlockLowlight } = window["@tiptap/extension-code-block-lowlight"];
+            var { Link } = window["@tiptap/extension-link"];
+            var { Table } = window["@tiptap/extension-table"];
+            var { TableRow } = window["@tiptap/extension-table-row"];
+            var { TableCell } = window["@tiptap/extension-table-cell"];
+            var { TableHeader } = window["@tiptap/extension-table-header"];
+            var { BubbleMenu } = window["@tiptap/extension-bubble-menu"];
+            var { CharacterCount } = window["@tiptap/extension-character-count"];
 
             editor = new Editor({
                 element: document.getElementById('noteContent'),
